@@ -1,0 +1,10 @@
+name = "bay-bellerive-stock"
+main = "dist/server/index.js"
+compatibility_date = "2026-09-18"
+
+[vars]
+SUPABASE_URL = "https://cmcxifoyvcivwcuqgewb.supabase.co"
+
+# SUPABASE_SERVICE_ROLE_KEY is a secret and is NOT set here -- it's set via
+# `wrangler secret put SUPABASE_SERVICE_ROLE_KEY`, which stores it encrypted and keeps it
+# out of this file and out of git.
