@@ -1,0 +1,7 @@
+.sites-package-stage/
+*.tar.gz
+.dev-state.sqlite
+.env.local
+tools/upgrade-shared.mjs
+tools/refine-shared.mjs
+tools/preserve-browser-data.mjs

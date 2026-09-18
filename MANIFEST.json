@@ -1,0 +1,137 @@
+{
+  "preparedAt": "2026-09-17T08:20:37.485Z",
+  "timezone": "Australia/Hobart",
+  "initials": "JB",
+  "files": [
+    {
+      "path": "Bay-Bellerive-Kitchen-Stocktake.json",
+      "size": 49440,
+      "sha256": "6b11100aaf4f043e24f81304d43a22a0f2bb6b14af06523c6b6a288b17b0c370"
+    },
+    {
+      "path": "Bay-Bellerive-Local-Trial.html",
+      "size": 133356,
+      "sha256": "10650c9f614ddb6b55936f27fa08ac94790cf7c1deae8679378097b5fe92ba31"
+    },
+    {
+      "path": "project/.gitignore",
+      "size": 112,
+      "sha256": "37dc9ee8c6e9bd790df9ec04a83c579f84686566393c8e5fe772a32d29fa7b8f"
+    },
+    {
+      "path": "project/.openai/hosting.json",
+      "size": 68,
+      "sha256": "756169a22bb2c396d87822fca216dfa44eb7aac4f3b5021af38a9368dc0b5274"
+    },
+    {
+      "path": "project/dist/.openai/drizzle/0000_shared_trial.sql",
+      "size": 949,
+      "sha256": "d50d091927a80477939446c1dc583bb67de3d97f5b47f16533b49a98c2e8e2b0"
+    },
+    {
+      "path": "project/dist/.openai/drizzle/meta/_journal.json",
+      "size": 203,
+      "sha256": "f86ff20477d5e4d805dffdffc9f4ea49f9912d07cbb7d3b177118cf566d347d8"
+    },
+    {
+      "path": "project/dist/.openai/hosting.json",
+      "size": 68,
+      "sha256": "756169a22bb2c396d87822fca216dfa44eb7aac4f3b5021af38a9368dc0b5274"
+    },
+    {
+      "path": "project/dist/app-icon.svg",
+      "size": 238,
+      "sha256": "b9999fc4fe0efacc76e056ce1a898ee2d04a0758c5c76a8660d515b6951a50f3"
+    },
+    {
+      "path": "project/dist/index.html",
+      "size": 56633,
+      "sha256": "14c8b9740973c9059d0e11612c0cd5fcb5690a5553e79c4a37aefdd24586202f"
+    },
+    {
+      "path": "project/dist/manifest.webmanifest",
+      "size": 377,
+      "sha256": "99641a61332984adb6d2b3620dd9442d1beb7e85eb3029db9f75f1e973fa049e"
+    },
+    {
+      "path": "project/dist/server/index.js",
+      "size": 67815,
+      "sha256": "24adf1edb16cad0bf670df1b252360bac0680547a567bc4d71eac28cf5f13177"
+    },
+    {
+      "path": "project/drizzle/0000_shared_trial.sql",
+      "size": 949,
+      "sha256": "d50d091927a80477939446c1dc583bb67de3d97f5b47f16533b49a98c2e8e2b0"
+    },
+    {
+      "path": "project/drizzle/meta/_journal.json",
+      "size": 203,
+      "sha256": "f86ff20477d5e4d805dffdffc9f4ea49f9912d07cbb7d3b177118cf566d347d8"
+    },
+    {
+      "path": "project/tools/build-local-trial.mjs",
+      "size": 5433,
+      "sha256": "12b6027ac4e41311565026a1bf2c59819b423086c478229fae9cde5555c83006"
+    },
+    {
+      "path": "project/tools/build-worker.mjs",
+      "size": 918,
+      "sha256": "20c54c6003360a965e06e33fc788f5bf23401051f86106d6f1add673e44737c3"
+    },
+    {
+      "path": "project/tools/check-access.mjs",
+      "size": 4365,
+      "sha256": "376bd1b6c33622127ff5abf451eda23fa90d0ebf8672e7cab4b5744b82cc7431"
+    },
+    {
+      "path": "project/tools/check-kitchen.mjs",
+      "size": 2217,
+      "sha256": "be414fd5856fc7e91042b1039ca26a050ed0f145a5938ec37083da914151040b"
+    },
+    {
+      "path": "project/tools/export-kitchen.mjs",
+      "size": 833,
+      "sha256": "a27f4a29810e99835859d00cd21aa99f6678434dac35c200821a88cac23e8a39"
+    },
+    {
+      "path": "project/tools/kitchen-stock.mjs",
+      "size": 5037,
+      "sha256": "b8c54d5891c294d122697deb265401941179ff89445f68d633aa4425b8ea06b6"
+    },
+    {
+      "path": "project/tools/local-details.js",
+      "size": 8948,
+      "sha256": "530cf19dea4a17c960cd61e5e190ef9aecba15354c212569f401ff8d386ba0a6"
+    },
+    {
+      "path": "project/tools/local-kitchen-groups.js",
+      "size": 4134,
+      "sha256": "cd22db95fc635b2c45760c72960c0b91158e84e3acd7498250b317df10ee079e"
+    },
+    {
+      "path": "project/TRIAL-READINESS.md",
+      "size": 3314,
+      "sha256": "caa86b1f888f5abc507cb8be70abbc273dd5d9df0c6591bbd9e87d95dce16172"
+    },
+    {
+      "path": "project/worker/index.js",
+      "size": 67815,
+      "sha256": "24adf1edb16cad0bf670df1b252360bac0680547a567bc4d71eac28cf5f13177"
+    },
+    {
+      "path": "project/worker/server-template.js",
+      "size": 10139,
+      "sha256": "97656362acfdeacae8c9a0c44b2a2bfb7c7f011893a1a79e57b8d45cb37f9443"
+    },
+    {
+      "path": "READ-ME-LOCAL-TRIAL.txt",
+      "size": 1427,
+      "sha256": "2128b25e647b8ba653a1af29d21d2c7fd1da05d38e1632092ca0ef37b4650850"
+    },
+    {
+      "path": "README.md",
+      "size": 6714,
+      "sha256": "24cc0a459bc5bfc4d0e4fc2724a29c7297062a169f2b3494b11cc4abcba4964a"
+    }
+  ]
+}

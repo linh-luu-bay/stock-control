@@ -1,0 +1,25 @@
+Bay Bellerive — local stock trial
+
+Extract the ZIP, then open Bay-Bellerive-Local-Trial.html in a desktop browser.
+No sign-in is required. This file does not update the live website.
+
+On a fresh browser, the Kitchen tab includes the 82 supplied kitchen products.
+Bar and Barista still contain demonstration products.
+If this browser already has trial records, use Load supplied kitchen list.
+That adds missing products and keeps existing matching records unchanged;
+review the existing matches manually. Eggs also matches Free-range Eggs.
+
+Red 'Details needed' markers list missing information. Use Edit item to fill
+in units, pack weight/volume, PAR, supplier and confirmed purchase pack size.
+Unknown counts remain blank ('Not counted'); genuine zero counts remain zero.
+Incomplete reorder setup is excluded from reorder quantities.
+Fractional quantities are enabled per product. Avocado and fries retain their
+half quantities. Changing a stock unit clears the count for manual conversion.
+The gluten-free Turkish bread is recorded only once: 4 frozen 200 g packs.
+
+Download a backup after each session and before moving or renaming the HTML.
+Browser storage is specific to the browser and may depend on the file path.
+Everyone with this file has manager tools; it is not an account-security test.
+
+Automated data and calculation checks passed. This update has not been
+visually tested in a browser or tested on an iPhone.
