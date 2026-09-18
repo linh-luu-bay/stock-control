@@ -4,20 +4,14 @@
 // API, not a local emulated database -- every save here reaches the actual project named in
 // worker/.env.local. Run supabase/schema.sql in that project's SQL Editor once before first use.
 //
-// DEV-ONLY: the Sites gateway normally supplies oai-authenticated-user-* headers after a real
-// sign-in. There is no such gateway here, so this script stamps those headers itself from a
-// fixed set of dev accounts, chosen with ?as=manager|supervisor|staff (persisted per browser via
-// a cookie). Never reuse this identity shortcut outside local development.
+// Authentication is the real thing: dist/index.html's magic-link sign-in talks straight to
+// Supabase Auth, so this script does no identity stamping of its own -- it is a plain proxy
+// from http://localhost:PORT to worker.fetch(request, env). Whoever signs in must already be
+// an active row in the users table (see the bootstrap check below for the very first one).
 //
 // Usage: node tools/dev-server.mjs
-//   PORT=8787 node tools/dev-server.mjs   (override the default port)
-//
-// Then open:
-//   http://localhost:8787/?as=manager     (default if no ?as= or cookie is present)
-//   http://localhost:8787/?as=supervisor
-//   http://localhost:8787/?as=staff
-// Use separate browsers or private windows to hold two roles signed in at once, since the
-// role choice is stored in a same-origin cookie shared by every tab in one browser profile.
+//   PORT=8787 node tools/dev-server.mjs   (override the default port; keep it matching
+//   whatever Site URL / Redirect URL you registered in Supabase's Auth settings)
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -47,19 +41,6 @@ async function supabaseAdmin(env,pathAndQuery,init={}){
     ...init,
     headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'content-type':'application/json',...(init.headers||{})},
   });
-}
-
-const DEV_USERS=[
-  {email:'dev-manager@bay-bellerive.local',name:'Dev Manager',role:'manager'},
-  {email:'dev-supervisor@bay-bellerive.local',name:'Dev Supervisor',role:'supervisor'},
-  {email:'dev-staff@bay-bellerive.local',name:'Dev Staff',role:'staff'},
-];
-
-function devUserFor(req){
-  const url=new URL(req.url,'http://localhost');
-  const cookieMatch=(req.headers.cookie||'').match(/bb_dev_role=([^;]+)/);
-  const requested=url.searchParams.get('as')||(cookieMatch&&decodeURIComponent(cookieMatch[1]));
-  return DEV_USERS.find(user=>user.role===requested)||DEV_USERS[0];
 }
 
 const STATIC_FILES={'/app-icon.svg':{file:'app-icon.svg',type:'image/svg+xml'}};
@@ -92,17 +73,15 @@ async function main(){
     process.exitCode=1;return;
   }
 
-  const nowIso=()=>new Date().toISOString();
-  console.log('Seeding dev accounts into Supabase (only if missing)…');
-  for(const person of DEV_USERS){
-    const existing=await supabaseAdmin(env,`/users?email=eq.${encodeURIComponent(person.email)}&select=email`);
-    const rows=existing.ok?await existing.json():[];
-    if(rows.length)continue;
-    const inserted=await supabaseAdmin(env,'/users',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({email:person.email,user_id:person.email,name:person.name,role:person.role,active:true,created_at:nowIso(),updated_at:nowIso()})});
-    if(!inserted.ok)console.error(`Could not seed ${person.email}:`,inserted.status,await inserted.text().catch(()=>''));
+  const usersProbe=await supabaseAdmin(env,'/users?select=email&limit=1');
+  const anyUsers=usersProbe.ok?await usersProbe.json():[];
+  if(!anyUsers.length){
+    console.log('\nNo staff accounts exist yet, so nobody can sign in -- the Accounts screen itself');
+    console.log('requires being signed in as a manager already. Run this once in the Supabase SQL');
+    console.log("Editor, using YOUR OWN real email (it needs to receive the magic-link email):\n");
+    console.log("  insert into users(email, user_id, name, role, active, created_at, updated_at)");
+    console.log("  values ('your-real-email@example.com', null, 'Your Name', 'manager', true, now(), now());\n");
   }
-  console.log('Dev accounts ready in Supabase:',DEV_USERS.map(u=>`${u.role} <${u.email}>`).join(', '));
-  console.log('These are real rows in your Supabase project (clearly marked dev-*@bay-bellerive.local) -- delete them from the users table whenever you like.');
 
   const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
@@ -115,13 +94,9 @@ async function main(){
     const chunks=[];
     for await(const chunk of req)chunks.push(chunk);
     const body=Buffer.concat(chunks);
-    const devUser=devUserFor(req);
     const headers=new Headers();
-    headers.set('oai-authenticated-user-id',devUser.email);
-    headers.set('oai-authenticated-user-email',devUser.email);
-    headers.set('oai-authenticated-user-full-name',encodeURIComponent(devUser.name));
-    headers.set('oai-authenticated-user-full-name-encoding','percent-encoded-utf-8');
     if(req.headers['content-type'])headers.set('content-type',req.headers['content-type']);
+    if(req.headers['authorization'])headers.set('authorization',req.headers['authorization']);
     const fetchRequest=new Request('http://localhost:'+PORT+req.url,{method:req.method,headers,body:body.length?body:undefined});
     let response;
     try{
@@ -131,16 +106,13 @@ async function main(){
       res.writeHead(500,{'content-type':'text/plain'});res.end('Dev server error: '+error.message);
       return;
     }
-    const requestedRole=url.searchParams.get('as');
-    const outHeaders=Object.fromEntries(response.headers.entries());
-    if(requestedRole&&DEV_USERS.some(user=>user.role===requestedRole))outHeaders['set-cookie']=`bb_dev_role=${requestedRole}; Path=/`;
-    res.writeHead(response.status,outHeaders);
+    res.writeHead(response.status,Object.fromEntries(response.headers.entries()));
     res.end(Buffer.from(await response.arrayBuffer()));
   });
 
   await new Promise(resolve=>server.listen(PORT,resolve));
   console.log(`\nBay Bellerive dev server running at http://localhost:${PORT}`);
-  console.log('Switch role with ?as=manager | ?as=supervisor | ?as=staff (sticky per browser via cookie).\n');
+  console.log('This must match the Site URL / Redirect URL registered in Supabase Auth settings.\n');
 }
 
 await main();

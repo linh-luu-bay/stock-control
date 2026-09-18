@@ -5,16 +5,24 @@ const json = (value, status=200) => new Response(JSON.stringify(value), {status,
 const text = (value, status=200) => new Response(value, {status, headers:{"content-type":"text/plain; charset=utf-8","cache-control":"no-store"}});
 const now = () => new Date().toISOString();
 
-function identity(request){
-  const userId=request.headers.get('oai-authenticated-user-id');
-  const email=(request.headers.get('oai-authenticated-user-email')||'').trim().toLowerCase();
-  let name=email||'Signed-in staff member';
-  const encoded=request.headers.get('oai-authenticated-user-full-name');
-  if(encoded&&request.headers.get('oai-authenticated-user-full-name-encoding')==='percent-encoded-utf-8'){
-    try{name=decodeURIComponent(encoded)}catch{}
-  }
-  if(!userId||!email)return null;
-  return{userId,email,name};
+// Independent authentication: verifies a Supabase Auth access token the browser sends as
+// "Authorization: Bearer <token>" (see dist/index.html's magic-link sign-in flow). This
+// replaces the old model of trusting oai-authenticated-user-* headers supplied by the Sites
+// gateway. The apikey header below only satisfies Supabase's own API gateway routing -- the
+// real identity comes from GoTrue validating the caller's own token, so this cannot be used
+// to impersonate another account.
+async function identity(request,env){
+  const header=request.headers.get('authorization')||'';
+  const match=header.match(/^Bearer\s+(.+)$/i);
+  if(!match)return null;
+  const token=match[1].trim();
+  if(!token)return null;
+  const response=await fetch(env.SUPABASE_URL+'/auth/v1/user',{headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+token}});
+  if(!response.ok)return null;
+  const authUser=await response.json();
+  const email=String(authUser?.email||'').trim().toLowerCase();
+  if(!email)return null;
+  return{userId:authUser.id,email,name:authUser.user_metadata?.full_name||email};
 }
 
 // Supabase (Postgres via PostgREST) data access. The Worker holds the only credential that
@@ -78,8 +86,10 @@ async function getRecoveryPoint(env,id){
 async function ensureUser(env, person){
   const existing=await getUserByEmail(env,person.email);
   if(!existing)return null;
-  await touchUser(env,person.email,person.userId,person.name||existing.name,now());
-  return{email:existing.email,name:person.name||existing.name,role:existing.role,active:Boolean(existing.active)};
+  // The users table is authoritative for name and role -- the identity provider's own
+  // profile name is only used to prove the email, never to override what a manager set here.
+  await touchUser(env,person.email,person.userId,existing.name,now());
+  return{email:existing.email,name:existing.name,role:existing.role,active:Boolean(existing.active)};
 }
 
 function eventKey(event){return event.id||`${event.movementId||''}|${event.clientAt||event.at||''}|${event.type||''}|${event.area||''}|${event.item||''}`}
@@ -191,7 +201,7 @@ async function audit(env,user,action,details){
 }
 
 async function handleApi(request,env,url){
-  const person=identity(request);
+  const person=await identity(request,env);
   if(!person)return json({error:'Sign-in required'},401);
   const user=await ensureUser(env,person);
   if(!user)return json({error:'Ask a manager to add your staff account.'},403);
