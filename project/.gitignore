@@ -2,6 +2,7 @@
 *.tar.gz
 .dev-state.sqlite
 .env.local
+.wrangler/
 tools/upgrade-shared.mjs
 tools/refine-shared.mjs
 tools/preserve-browser-data.mjs
