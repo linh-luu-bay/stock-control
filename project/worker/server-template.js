@@ -232,7 +232,10 @@ async function handleApi(request,env,url){
     const result=secureState(incoming,previous,user);
     if(!result.ok)return json({error:result.error},400);
     const state=result.state;
-    if(state.data.some(item=>!Number.isFinite(item.q)||item.q<0||!Number.isFinite(item.t)||item.t<0||['tDay','tEvening','tEvent'].some(key=>item[key]!=null&&(!Number.isFinite(Number(item[key]))||Number(item[key])<0))))return json({error:'Stock and PAR quantities must be valid non-negative numbers.'},400);
+    // null means "not yet counted" (q) or "no target set yet" (t) -- distinct from 0, and
+    // deliberately allowed through. Anything else must be a valid non-negative number.
+    const validCount=v=>v===null||(Number.isFinite(v)&&v>=0);
+    if(state.data.some(item=>!validCount(item.q)||!validCount(item.t)||['tDay','tEvening','tEvent'].some(key=>item[key]!=null&&(!Number.isFinite(Number(item[key]))||Number(item[key])<0))))return json({error:'Stock and PAR quantities must be valid non-negative numbers, or left unset.'},400);
     state._lastRequest={id:incoming.requestId||null,actor:user.email};
     const stamp=now();
     if(row){
