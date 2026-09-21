@@ -174,7 +174,10 @@ function secureState(incoming, previous, user){
     data=(previous.data||[]).map(old=>{
       const candidate=byId.get(itemKey(old));
       if(!candidate)return old;
-      const secured={...old,q:Number.isFinite(Number(candidate.q))?Number(candidate.q):old.q};
+      // candidate.q===null means "marked not counted" and must survive as null, not be
+      // coerced to 0 -- Number(null) is 0 and Number.isFinite(0) is true, so this needs an
+      // explicit null check rather than relying on Number.isFinite alone.
+      const secured={...old,q:candidate.q===null?null:(Number.isFinite(Number(candidate.q))?Number(candidate.q):old.q)};
       if(user.role!=='manager')secured.lastCost=old.lastCost;
       return secured;
     });
