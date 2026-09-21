@@ -159,8 +159,16 @@ function validateEvents(newEvents, previousData, finalData, user){
 function summarizeQuantityChanges(previousData, finalData){
   const previousMap=itemsById(previousData),changes=[];
   for(const item of finalData){
-    const beforeQ=previousMap.has(item.id)?Number(previousMap.get(item.id).q)||0:0,afterQ=Number(item.q)||0;
-    if(Math.abs(afterQ-beforeQ)>1e-6)changes.push({id:item.id,name:item.n,area:item.a,before:beforeQ,after:afterQ,delta:afterQ-beforeQ});
+    const beforeQ=previousMap.has(item.id)?previousMap.get(item.id).q:null,afterQ=item.q;
+    // Either side being "not counted" (null) means there is no real quantity to diff --
+    // treating it as 0 would log a fictitious full-quantity change (e.g. 20 -> null logged
+    // as "-20", as if 20 units vanished, when really the count was just marked unknown).
+    if(beforeQ===null||afterQ===null){
+      if(beforeQ!==afterQ)changes.push({id:item.id,name:item.n,area:item.a,before:beforeQ,after:afterQ,delta:null});
+      continue;
+    }
+    const before=Number(beforeQ)||0,after=Number(afterQ)||0;
+    if(Math.abs(after-before)>1e-6)changes.push({id:item.id,name:item.n,area:item.a,before,after,delta:after-before});
   }
   return changes;
 }
