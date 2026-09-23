@@ -5,6 +5,13 @@ compatibility_date = "2026-09-18"
 [vars]
 SUPABASE_URL = "https://cmcxifoyvcivwcuqgewb.supabase.co"
 
+# Cloudflare's Git-connected build runs `npx wrangler preview` for non-production
+# branches, which requires its own [previews.vars] block. SUPABASE_URL is public by
+# design (see worker/server-template.js), so it's safe to reuse the same value here --
+# this is just the API endpoint, not a credential.
+[previews.vars]
+SUPABASE_URL = "https://cmcxifoyvcivwcuqgewb.supabase.co"
+
 # SUPABASE_SERVICE_ROLE_KEY is a secret and is NOT set here -- it's set via
 # `wrangler secret put SUPABASE_SERVICE_ROLE_KEY`, which stores it encrypted and keeps it
 # out of this file and out of git.
