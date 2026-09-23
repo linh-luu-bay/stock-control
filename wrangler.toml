@@ -1,5 +1,5 @@
 name = "bay-bellerive-stock"
-main = "dist/server/index.js"
+main = "project/dist/server/index.js"
 compatibility_date = "2026-09-18"
 
 [vars]
