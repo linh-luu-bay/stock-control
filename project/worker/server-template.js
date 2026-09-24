@@ -83,12 +83,14 @@ async function getRecoveryPoint(env,id){
   const rows=await response.json();
   return rows[0]?rows[0].details:null;
 }
-async function ensureUser(env, person){
+async function ensureUser(env, person, ctx){
   const existing=await getUserByEmail(env,person.email);
   if(!existing)return null;
   // The users table is authoritative for name and role -- the identity provider's own
   // profile name is only used to prove the email, never to override what a manager set here.
-  await touchUser(env,person.email,person.userId,existing.name,now());
+  // Only bookkeeping, so let it finish after the response instead of delaying every request.
+  const touch=touchUser(env,person.email,person.userId,existing.name,now()).catch(error=>console.error(error));
+  if(ctx?.waitUntil)ctx.waitUntil(touch);else await touch;
   return{email:existing.email,name:existing.name,role:existing.role,active:Boolean(existing.active)};
 }
 
@@ -211,10 +213,10 @@ async function audit(env,user,action,details){
   await supabaseRequest(env,'/audit_events',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({occurred_at:now(),actor_email:user.email,actor_name:user.name,actor_role:user.role,action,details:details??null})});
 }
 
-async function handleApi(request,env,url){
+async function handleApi(request,env,url,ctx){
   const person=await identity(request,env);
   if(!person)return json({error:'Sign-in required'},401);
-  const user=await ensureUser(env,person);
+  const user=await ensureUser(env,person,ctx);
   if(!user)return json({error:'Ask a manager to add your staff account.'},403);
   if(!user.active)return json({error:'This account has been disabled'},403);
   if(url.pathname==='/api/recovery'&&request.method==='GET'){
@@ -280,10 +282,10 @@ async function handleApi(request,env,url){
 }
 
 export default{
-  async fetch(request,env){
+  async fetch(request,env,ctx){
     const url=new URL(request.url);
     try{
-      if(url.pathname.startsWith('/api/'))return await handleApi(request,env,url);
+      if(url.pathname.startsWith('/api/'))return await handleApi(request,env,url,ctx);
       if(url.pathname==='/'||url.pathname==='/index.html')return new Response(HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
       if(url.pathname==='/manifest.webmanifest')return json({name:'Bay Bellerive Stock',short_name:'Bay Stock',start_url:'/',display:'standalone',background_color:'#f5f2e9',theme_color:'#132b28'});
       return text('Not found',404);
