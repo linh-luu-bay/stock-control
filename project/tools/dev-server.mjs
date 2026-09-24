@@ -53,7 +53,9 @@ async function main(){
     console.error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in worker/.env.local.');
     process.exitCode=1;return;
   }
-  const env={SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY};
+  // The admin area calls Supabase with the signed-in manager's own token plus this public key.
+  const SUPABASE_ANON_KEY=process.env.SUPABASE_ANON_KEY||dotenv.SUPABASE_ANON_KEY;
+  const env={SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,SUPABASE_ANON_KEY};
 
   console.log('Building worker bundle from worker/server-template.js…');
   execFileSync(process.execPath,[path.join(root,'tools','build-worker.mjs')],{stdio:'inherit',cwd:root});

@@ -60,12 +60,71 @@ The shared frontend's editable source is `dist/index.html`, despite its folder n
 
 ## Current deployment contract
 
-This is still a Cloudflare Worker-compatible ESM module with a default `fetch(request, env)` export, entrypoint `dist/server/index.js`. It no longer needs a D1 `DB` binding — it needs two environment values instead:
+This is still a Cloudflare Worker-compatible ESM module with a default `fetch(request, env)` export, entrypoint `dist/server/index.js`. It no longer needs a D1 `DB` binding — it needs three environment values instead (see "Admin area → Environment variables" below for where each one is set):
 
 - `SUPABASE_URL` — plain config, not secret.
+- `SUPABASE_ANON_KEY` — plain config, not secret (the public/publishable key). Used by the admin area and handed to the page for sign-in.
 - `SUPABASE_SERVICE_ROLE_KEY` — a real secret; on Cloudflare it should be set via `wrangler secret put`, never committed or left in a plain vars block.
 
 **Deployed** — `wrangler.toml` configures the Worker (`bay-bellerive-stock`), and it's live at `https://bay-bellerive-stock.baybellerivestockcontrol.workers.dev`. `.openai/hosting.json` identifies the old Sites project this handover originally targeted; that hosting path has been fully abandoned in favor of this independent hosting + independent auth (see "Authentication" above). Still open: a business-controlled custom domain instead of the free `workers.dev` one, and confirming who owns/bills the Cloudflare account (see `project/TRIAL-READINESS.md` item 10). After any change to `worker/server-template.js` or `dist/index.html`, redeploy with `npx wrangler deploy` — nothing pushes there automatically.
+
+## Admin area
+
+Managers get an **Admin** button in the header with three sections: **Suppliers**, **Staff accounts** (the old "Accounts" dialog, moved here) and **Change log**. Only active managers can see or use it, and that is enforced by Supabase row-level security, not just by hiding the button: the Worker calls Supabase for these screens with the manager's own sign-in token and the public anon key, never the service role key.
+
+The database side is three migration files in `project/supabase/migrations/`, applied in filename order:
+
+| File | What it does |
+| --- | --- |
+| `20260924120000_admin_suppliers.sql` | Creates the `suppliers` table and pre-fills it with the supplier names already on stock items. |
+| `20260924120100_admin_change_log.sql` | Creates the read-only `change_log` table and the Postgres triggers that fill it for `suppliers`, `users` and stock items. Stock items live inside `app_state`, so a trigger compares each save item by item. On-hand counts and photos aren't logged. |
+| `20260924120200_admin_access.sql` | Manager-only row-level security policies, the "can't remove your own / the last manager" guard, and the two functions the Change log screen uses. |
+
+All three are safe to run more than once. To watch another table later, add one line to a new migration: `select enable_change_log('table_name', 'id_column', 'name_column');`.
+
+### Applying the migrations to staging
+
+Staging is a **separate Supabase project**. Never test against the live project (`cmcxifoyvcivwcuqgewb`).
+
+1. Create a new Supabase project, for example `bay-bellerive-staging`.
+2. In that project, open **SQL Editor → New query**. Paste and run `project/supabase/schema.sql`, then each migration file above, one at a time, in order. Each should finish with "Success. No rows returned".
+3. Turn on Google sign-in for staging:
+   - Go to **Authentication → Sign In / Providers → Google** and enter the same Google client ID and secret the live project uses.
+   - In Google Cloud Console, add `https://<staging-project-ref>.supabase.co/auth/v1/callback` as an authorised redirect URI.
+4. Go to **Authentication → URL Configuration** and add your Cloudflare preview address, followed by `/**`, to **Redirect URLs**. The preview address is printed at the end of the Cloudflare build log.
+5. Point previews at staging. In both `wrangler.toml` files (the repo root one and `project/wrangler.toml`), replace the two `REPLACE-WITH-STAGING-…` placeholders under `[previews.vars]` with the staging **Project URL** and **anon / publishable key** (Project Settings → API). Both are public values, so they can be committed.
+6. Give previews the staging secret key. From `project/`, run `npx wrangler preview base-config secret put SUPABASE_SERVICE_ROLE_KEY` and paste the staging project's **service_role** key when asked. It's stored encrypted in Cloudflare and never goes in a file. It only applies to previews created afterwards, so push the branch again once it's set.
+7. Optional, for realistic data: sign in to the **live** app as a manager, then use **Data backup → Download backup**. Sign in to the preview and use **Import and merge backup**. Then run `20260924120000_admin_suppliers.sql` on staging once more, so the imported supplier names fill the suppliers list.
+
+### Setting the first admin (manager)
+
+There's no sign-up screen, so the first manager is added with SQL (SQL Editor, in the project you're setting up):
+
+```sql
+insert into users (email, name, role, active)
+values ('your-google-email@example.com', 'Your Name', 'manager', true);
+```
+
+Use the exact Google address you sign in with, in lower case. From then on, that person can add everyone else from **Admin → Staff accounts**. The live project already has manager accounts, so this is only needed on staging or a fresh project.
+
+### Environment variables
+
+| Name | Secret? | Live (production) | Previews (staging) | Local `dev-server.mjs` |
+| --- | --- | --- | --- | --- |
+| `SUPABASE_URL` | No | `[vars]` in `wrangler.toml` | `[previews.vars]` in `wrangler.toml` | `worker/.env.local` |
+| `SUPABASE_ANON_KEY` | No (public key) | `[vars]` in `wrangler.toml` | `[previews.vars]` in `wrangler.toml` | `worker/.env.local` |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Yes** | `npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY` | `npx wrangler preview base-config secret put SUPABASE_SERVICE_ROLE_KEY` | `worker/.env.local` (gitignored) |
+
+The Worker hands the page only `SUPABASE_URL` and `SUPABASE_ANON_KEY`, which is how a preview signs in to staging. The service role key never leaves the server.
+
+### Going live: order matters
+
+1. Apply the three migrations to the **live** Supabase project, the same way as step 2 above. The current live app keeps working with them in place.
+2. Merge the pull request, then deploy (`npx wrangler deploy` from `project/`, or let Cloudflare's build deploy `main`).
+
+If the code goes live before the migrations, stock keeps working, but Staff accounts and the rest of Admin show "The admin area's database changes haven't been applied yet" until they are.
+
+The manual test checklist for a preview is in `project/ADMIN-TEST-CHECKLIST.md`.
 
 ## Records and backups
 

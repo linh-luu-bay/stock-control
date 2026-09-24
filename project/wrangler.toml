@@ -2,16 +2,21 @@ name = "bay-bellerive-stock"
 main = "dist/server/index.js"
 compatibility_date = "2026-09-18"
 
+# Live (production) Supabase project. Both values are public by design: the URL is just the
+# API address, and the anon/publishable key only lets a browser sign in. Row-level security
+# decides what any signed-in person can see (see supabase/migrations/).
 [vars]
 SUPABASE_URL = "https://cmcxifoyvcivwcuqgewb.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_QQ7f7Zi3q3ryGd2Gnc5XnQ_g8XugnHp"
 
-# Cloudflare's Git-connected build runs `npx wrangler preview` for non-production
-# branches, which requires its own [previews.vars] block. SUPABASE_URL is public by
-# design (see worker/server-template.js), so it's safe to reuse the same value here --
-# this is just the API endpoint, not a credential.
+# Preview deployments (every branch except main) use the STAGING Supabase project, so testing
+# a branch never touches live stock records. Cloudflare doesn't copy [vars] into previews.
+# Replace both placeholders with the staging project's values (Supabase dashboard -> Project
+# Settings -> API) before testing a preview. See README.md, "Admin area".
 [previews.vars]
-SUPABASE_URL = "https://cmcxifoyvcivwcuqgewb.supabase.co"
+SUPABASE_URL = "https://REPLACE-WITH-STAGING-PROJECT.supabase.co"
+SUPABASE_ANON_KEY = "REPLACE-WITH-STAGING-ANON-KEY"
 
-# SUPABASE_SERVICE_ROLE_KEY is a secret and is NOT set here -- it's set via
-# `wrangler secret put SUPABASE_SERVICE_ROLE_KEY`, which stores it encrypted and keeps it
-# out of this file and out of git.
+# SUPABASE_SERVICE_ROLE_KEY is a secret and is NOT set here. Live: `npx wrangler secret put
+# SUPABASE_SERVICE_ROLE_KEY`. Previews (staging key): `npx wrangler preview base-config secret
+# put SUPABASE_SERVICE_ROLE_KEY`. Both store it encrypted, out of this file and out of git.
