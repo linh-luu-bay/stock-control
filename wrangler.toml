@@ -11,11 +11,11 @@ SUPABASE_ANON_KEY = "sb_publishable_QQ7f7Zi3q3ryGd2Gnc5XnQ_g8XugnHp"
 
 # Preview deployments (every branch except main) use the STAGING Supabase project, so testing
 # a branch never touches live stock records. Cloudflare doesn't copy [vars] into previews.
-# Replace both placeholders with the staging project's values (Supabase dashboard -> Project
-# Settings -> API) before testing a preview. See README.md, "Admin area".
+# Staging project: bay-bellerive-staging (Supabase dashboard -> Project
+# Settings -> API). See README.md, "Admin area".
 [previews.vars]
-SUPABASE_URL = "https://REPLACE-WITH-STAGING-PROJECT.supabase.co"
-SUPABASE_ANON_KEY = "REPLACE-WITH-STAGING-ANON-KEY"
+SUPABASE_URL = "https://sywuyqlkdrfjxmjsggfh.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_sDsTOvZauUfzjfUd0__gEg_a-lXmHoi"
 
 # SUPABASE_SERVICE_ROLE_KEY is a secret and is NOT set here. Live: `npx wrangler secret put
 # SUPABASE_SERVICE_ROLE_KEY`. Previews (staging key): `npx wrangler preview base-config secret
