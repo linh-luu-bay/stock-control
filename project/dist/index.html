@@ -279,7 +279,7 @@ $('#confirm-import').onclick=()=>{
   pendingImportRows.forEach(row=>{
     let existing=data.find(x=>x.a===area&&x.n.trim().toLowerCase()===row.n.trim().toLowerCase());
     if(existing){Object.assign(existing,{c:row.c,group:row.group,u:row.u,t:row.t,m:row.m,s:row.s,location:row.location,p:row.p,pl:row.pl});updated++}
-    else{data.push({id:crypto.randomUUID(),a:area,c:row.c,group:row.group,n:row.n,q:0,t:row.t,tDay:null,tEvening:null,tEvent:null,u:row.u,m:row.m,s:row.s,location:row.location,active:true,p:row.p,pl:row.pl,pv:0,pu:'g',photo:''});added++}
+    else{data.push({id:crypto.randomUUID(),a:area,c:row.c,group:row.group,n:row.n,q:null,t:row.t,tDay:null,tEvening:null,tEvent:null,u:row.u,m:row.m,s:row.s,location:row.location,active:true,p:row.p,pl:row.pl,pv:0,pu:'g',photo:''});added++}
   });
   save();populateCategoryFilter();render();
   $('#import-status').style.color='';
