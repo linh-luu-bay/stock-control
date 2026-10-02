@@ -53,7 +53,14 @@ const CONSTRAINT_MESSAGES={
   suppliers_min_order_not_negative:'The minimum order can’t be negative.',
   suppliers_order_days_valid:'Choose order days from Monday to Sunday.',
   suppliers_delivery_days_valid:'Choose delivery days from Monday to Sunday.',
-  users_pkey:'An account with that email address already exists.'
+  users_pkey:'An account with that email address already exists.',
+  categories_name_unique:'This area already has a category with that name.',
+  categories_name_required:'Enter the category name.',
+  categories_name_length:'Keep the name to 80 characters or fewer.',
+  subgroups_name_unique:'This category already has a subgroup with that name.',
+  subgroups_name_required:'Enter the subgroup name.',
+  subgroups_name_length:'Keep the name to 80 characters or fewer.',
+  subgroups_name_not_other:'“Other” is already used for items without a subgroup. Choose another name.'
 };
 async function asUser(env,token,path,init={}){
   if(!env.SUPABASE_ANON_KEY)throw new AdminError('The admin area isn’t set up on this server yet (SUPABASE_ANON_KEY is missing).',503);
@@ -115,6 +122,17 @@ async function getUserByEmail(env,email){
 }
 async function touchUser(env,email,userId,name,stamp){
   await supabaseRequest(env,`/users?email=eq.${encodeURIComponent(email)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({user_id:userId,name,updated_at:stamp})});
+}
+// The category and subgroup lists from Admin → Master data, for everyone who signs in. null when
+// the master data migration hasn't been applied yet; the page then falls back to its built-in lists.
+async function getMasterData(env){
+  try{
+    const[categories,subgroups]=await Promise.all([
+      supabaseRequest(env,'/categories?select=id,area,name,sort_order&order=sort_order.asc,name.asc').then(r=>r.json()),
+      supabaseRequest(env,'/subgroups?select=id,category_id,name,sort_order&order=sort_order.asc,name.asc').then(r=>r.json())
+    ]);
+    return{categories,subgroups};
+  }catch(error){console.error('Master data unavailable',error.message);return null}
 }
 async function getAppState(env){
   const response=await supabaseRequest(env,'/app_state?id=eq.1&select=value,revision');
@@ -290,8 +308,8 @@ async function handleApi(request,env,url,ctx){
     return json(await listRecoveryPoints(env));
   }
   if(url.pathname==='/api/bootstrap'&&request.method==='GET'){
-    const row=await getAppState(env);
-    return json({user,hasState:Boolean(row),state:row?visibleState(row.value,user):null,revision:Number(row?.revision||0)});
+    const[row,master]=await Promise.all([getAppState(env),getMasterData(env)]);
+    return json({user,hasState:Boolean(row),state:row?visibleState(row.value,user):null,revision:Number(row?.revision||0),master});
   }
   if(url.pathname==='/api/state'&&request.method==='PUT'){
     const raw=await request.text();
@@ -358,6 +376,54 @@ async function handleAdmin(request,env,url,user,token){
     const params=url.searchParams,day=key=>/^\d{4}-\d{2}-\d{2}$/.test(params.get(key)||'')?params.get(key):null,value=key=>(params.get(key)||'').trim()||null,before=Number(params.get('before'));
     const filters={p_from:day('from'),p_to:day('to'),p_user:value('user'),p_section:value('section'),p_action:value('action'),p_before:Number.isInteger(before)&&before>0?before:null,p_limit:100};
     return json(await (await asUser(env,token,'/rpc/admin_change_log',{method:'POST',body:JSON.stringify(filters)})).json());
+  }
+  if(path==='/api/admin/master-data'&&method==='GET'){
+    const[categories,subgroups,row]=await Promise.all([
+      asUser(env,token,'/categories?select=id,area,name,sort_order&order=sort_order.asc,name.asc').then(r=>r.json()),
+      asUser(env,token,'/subgroups?select=id,category_id,name,sort_order&order=sort_order.asc,name.asc').then(r=>r.json()),
+      getAppState(env)
+    ]);
+    // How many items (discontinued ones included) use each category and subgroup, keyed the
+    // same case-insensitive way the database functions match them.
+    const counts={};
+    for(const item of Array.isArray(row?.value?.data)?row.value.data:[]){
+      const key=[item.a,String(item.c||'').trim().toLowerCase()].join('|');
+      counts[key]=(counts[key]||0)+1;
+      const group=String(item.group||'').trim().toLowerCase();
+      if(group)counts[key+'|'+group]=(counts[key+'|'+group]||0)+1;
+    }
+    return json({categories,subgroups,counts});
+  }
+  const masterMatch=path.match(/^\/api\/admin\/(categories|subgroups)$/);
+  if(masterMatch){
+    const kind=masterMatch[1],single=kind==='categories'?'category':'subgroup';
+    // Functions returning void can come back with an empty body.
+    const rpc=(name,args)=>asUser(env,token,'/rpc/'+name,{method:'POST',body:JSON.stringify(args)}).then(async r=>{const text=await r.text();return text?JSON.parse(text):null});
+    const cleanName=value=>{const name=cleanText(value,200);if(!name)throw new AdminError(`Enter the ${single} name.`);return name};
+    if(method==='POST'){
+      const body=await readBody();
+      if(kind==='categories'){
+        if(!['Bar','Kitchen','Barista'].includes(body.area))throw new AdminError('Choose Bar, Kitchen or Barista.');
+        return json({id:await rpc('add_category',{p_area:body.area,p_name:cleanName(body.name)})},201);
+      }
+      if(!/^[0-9a-f-]{36}$/i.test(String(body.category_id||'')))throw new AdminError('That category couldn’t be found.',404);
+      return json({id:await rpc('add_subgroup',{p_category_id:body.category_id,p_name:cleanName(body.name)})},201);
+    }
+    const id=url.searchParams.get('id')||'';
+    if(!/^[0-9a-f-]{36}$/i.test(id))throw new AdminError(`That ${single} couldn’t be found.`,404);
+    if(method==='PATCH'){
+      const body=await readBody();
+      if(body.move==='up'||body.move==='down'){
+        await rpc(kind==='categories'?'move_category':'move_subgroup',{p_id:id,p_up:body.move==='up'});
+        return json({ok:true,itemsChanged:0});
+      }
+      const itemsChanged=await rpc(kind==='categories'?'rename_category':'rename_subgroup',{p_id:id,p_name:cleanName(body.name)});
+      return json({ok:true,itemsChanged:Number(itemsChanged)||0});
+    }
+    if(method==='DELETE'){
+      await rpc(kind==='categories'?'delete_category':'delete_subgroup',{p_id:id});
+      return json({ok:true});
+    }
   }
   if(path==='/api/admin/change-log/people'&&method==='GET'){
     const rows=await (await asUser(env,token,'/rpc/admin_change_log_people',{method:'POST',body:'{}'})).json();

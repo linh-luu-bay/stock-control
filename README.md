@@ -70,17 +70,19 @@ This is still a Cloudflare Worker-compatible ESM module with a default `fetch(re
 
 ## Admin area
 
-Managers get an **Admin** button in the header with three sections: **Suppliers**, **Staff accounts** (the old "Accounts" dialog, moved here) and **Change log**. Only active managers can see or use it, and that is enforced by Supabase row-level security, not just by hiding the button: the Worker calls Supabase for these screens with the manager's own sign-in token and the public anon key, never the service role key.
+Managers get an **Admin** button in the header with four sections: **Suppliers**, **Master data**, **Staff accounts** (the old "Accounts" dialog, moved here) and **Change log**. **Master data** holds the lists the stock pages are built from, kept apart from day-to-day operations. For now that is **Categories**: the categories in each area (Bar, Kitchen, Barista) and the subgroups inside them, which managers can add, rename, reorder and delete. Only active managers can see or use it, and that is enforced by Supabase row-level security, not just by hiding the button: the Worker calls Supabase for these screens with the manager's own sign-in token and the public anon key, never the service role key.
 
-The database side is three migration files in `project/supabase/migrations/`, applied in filename order:
+The database side is these migration files in `project/supabase/migrations/`, applied in filename order:
 
 | File | What it does |
 | --- | --- |
 | `20260924120000_admin_suppliers.sql` | Creates the `suppliers` table and pre-fills it with the supplier names already on stock items. |
 | `20260924120100_admin_change_log.sql` | Creates the read-only `change_log` table and the Postgres triggers that fill it for `suppliers`, `users` and stock items. Stock items live inside `app_state`, so a trigger compares each save item by item. On-hand counts and photos aren't logged. |
 | `20260924120200_admin_access.sql` | Manager-only row-level security policies, the "can't remove your own / the last manager" guard, and the two functions the Change log screen uses. |
+| `20261002120000_replace_barista_items.sql` | Replaces the Barista items with the 53-item list (one-off data change, saves a recovery point first). |
+| `20261002130000_master_data_categories.sql` | Creates the `categories` and `subgroups` tables, pre-fills them from the built-in lists and the categories and subgroups items already use, and adds the functions behind **Master data → Categories**. Items still store category and subgroup names, so a rename goes through a function that renames the list entry and every item using it in one transaction. Deleting is refused while any item, discontinued ones included, still uses it. |
 
-All three are safe to run more than once. To watch another table later, add one line to a new migration: `select enable_change_log('table_name', 'id_column', 'name_column');`.
+All of them are safe to run more than once. To watch another table later, add one line to a new migration: `select enable_change_log('table_name', 'id_column', 'name_column');`.
 
 ### Applying the migrations to staging
 
@@ -119,10 +121,10 @@ The Worker hands the page only `SUPABASE_URL` and `SUPABASE_ANON_KEY`, which is 
 
 ### Going live: order matters
 
-1. Apply the three migrations to the **live** Supabase project, the same way as step 2 above. The current live app keeps working with them in place.
+1. Apply the migrations to the **live** Supabase project, the same way as step 2 above. The current live app keeps working with them in place.
 2. Merge the pull request, then deploy (`npx wrangler deploy` from `project/`, or let Cloudflare's build deploy `main`).
 
-If the code goes live before the migrations, stock keeps working, but Staff accounts and the rest of Admin show "The admin area's database changes haven't been applied yet" until they are.
+If the code goes live before the migrations, stock keeps working, but Staff accounts and the rest of Admin show "The admin area's database changes haven't been applied yet" until they are. Without the master data migration the stock page uses its built-in category lists, and Master data shows the same message.
 
 The manual test checklist for a preview is in `project/ADMIN-TEST-CHECKLIST.md`.
 

@@ -40,6 +40,23 @@ Tick each box as you go. If anything fails, note what you did and what you saw.
 - [ ] **Restore** from the Archived list brings it back to Active.
 - [ ] There is no Delete button anywhere.
 
+## B2. Master data → Categories
+
+Run `20261002130000_master_data_categories.sql` on staging first.
+
+- [ ] **Admin** has a **Master data** tab between Suppliers and Staff accounts, with a **Categories** sub-tab.
+- [ ] For each area (Bar, Kitchen, Barista), the categories are in the same order as on the stock page, with the right item counts and subgroups (Barista → Retail Items → Retail Coffee Beans).
+- [ ] **+ Add category**, e.g. "Test category" in Bar. It appears last in the list and on the Bar stock page's category filter.
+- [ ] Adding the same name again (any capitals) gives "This area already has a category with that name."
+- [ ] **↑ / ↓** move it. The stock page shows the new order.
+- [ ] **+ Subgroup** on it, e.g. "Test subgroup". Edit an item on the stock page: the Subgroup field suggests it. Typing a subgroup that isn't listed is refused with a message pointing to Master data.
+- [ ] **Rename** a category that has items (e.g. Spirits → Spirits & Liqueurs). The dialog says how many items move. Afterwards the stock page shows those items under the new name, with nothing missing, and the footer says "Saved to shared records".
+- [ ] Rename it back.
+- [ ] **Delete** a category that still has items: refused, with how many items are in it. Delete "Test category": it goes, along with its subgroup.
+- [ ] **CSV import** with a subgroup that isn't listed for its category skips that row and says why.
+- [ ] **Change log** shows the category and subgroup changes (Section: Categories / Subgroups), plus one stock item entry for each item a rename moved.
+- [ ] On a second device with the stock page open during a rename, the next save there reports a conflict instead of undoing the rename.
+
 ## C. Staff accounts
 
 - [ ] The **Staff accounts** tab lists existing accounts with Active / Deactivated status.
@@ -93,4 +110,4 @@ Sign in with the **staff** account.
 
 ---
 
-When everything is ticked, it's ready to merge. Before or at the same time as deploying, apply the three migrations to the **live** Supabase project (README: "Going live: order matters").
+When everything is ticked, it's ready to merge. Before or at the same time as deploying, apply the migrations to the **live** Supabase project (README: "Going live: order matters").
