@@ -66,7 +66,7 @@ This is still a Cloudflare Worker-compatible ESM module with a default `fetch(re
 - `SUPABASE_ANON_KEY` — plain config, not secret (the public/publishable key). Used by the admin area and handed to the page for sign-in.
 - `SUPABASE_SERVICE_ROLE_KEY` — a real secret; on Cloudflare it should be set via `wrangler secret put`, never committed or left in a plain vars block.
 
-**Deployed** — `wrangler.toml` configures the Worker (`bay-bellerive-stock`), and it's live at `https://bay-bellerive-stock.baybellerivestockcontrol.workers.dev`. `.openai/hosting.json` identifies the old Sites project this handover originally targeted; that hosting path has been fully abandoned in favor of this independent hosting + independent auth (see "Authentication" above). Still open: a business-controlled custom domain instead of the free `workers.dev` one, and confirming who owns/bills the Cloudflare account (see `project/TRIAL-READINESS.md` item 10). After any change to `worker/server-template.js` or `dist/index.html`, redeploy with `npx wrangler deploy` — nothing pushes there automatically.
+**Deployed** — `wrangler.toml` configures the Worker (`bay-bellerive-stock`), and it's live at `https://bay-bellerive-stock.baybellerivestockcontrol.workers.dev`. `.openai/hosting.json` identifies the old Sites project this handover originally targeted; that hosting path has been fully abandoned in favor of this independent hosting + independent auth (see "Authentication" above). Still open: a business-controlled custom domain instead of the free `workers.dev` one, and confirming who owns/bills the Cloudflare account (see `project/TRIAL-READINESS.md` item 10). Cloudflare's Git-connected build deploys `main` automatically whenever a pull request is merged; there is no separate deploy step. Every other branch gets its own preview address, which uses the staging Supabase project. Cloudflare doesn't rebuild the bundle, though: after any change to `worker/server-template.js` or `dist/index.html`, run `node tools/build-worker.mjs` and commit the regenerated `worker/index.js` and `dist/server/index.js`, or the old version goes live.
 
 ## Admin area
 
@@ -120,7 +120,7 @@ The Worker hands the page only `SUPABASE_URL` and `SUPABASE_ANON_KEY`, which is 
 ### Going live: order matters
 
 1. Apply the three migrations to the **live** Supabase project, the same way as step 2 above. The current live app keeps working with them in place.
-2. Merge the pull request, then deploy (`npx wrangler deploy` from `project/`, or let Cloudflare's build deploy `main`).
+2. Merge the pull request. Cloudflare deploys `main` automatically.
 
 If the code goes live before the migrations, stock keeps working, but Staff accounts and the rest of Admin show "The admin area's database changes haven't been applied yet" until they are.
 
