@@ -53,6 +53,7 @@ const CONSTRAINT_MESSAGES={
   suppliers_min_order_not_negative:'The minimum order can’t be negative.',
   suppliers_order_days_valid:'Choose order days from Monday to Sunday.',
   suppliers_delivery_days_valid:'Choose delivery days from Monday to Sunday.',
+  suppliers_areas_valid:'Choose areas from Bar, Kitchen and Barista.',
   users_pkey:'An account with that email address already exists.',
   venue_settings_email_format:'Enter a valid venue email address.'
 };
@@ -68,12 +69,13 @@ async function asUser(env,token,path,init={}){
   }
   if(detail.code==='P0001')throw new AdminError(message); // raised by our own triggers, already plain English
   if(detail.code==='42501'||response.status===401||response.status===403)throw new AdminError('Only managers can do this.',403);
-  if(['PGRST202','PGRST205','42P01','42883'].includes(detail.code))throw new AdminError('The admin area’s database changes haven’t been applied yet. Run the admin migrations (see README) and try again.',503);
+  if(['PGRST202','PGRST204','PGRST205','42P01','42703','42883'].includes(detail.code))throw new AdminError('The admin area’s database changes haven’t been applied yet. Run the admin migrations (see README) and try again.',503);
   console.error('Admin request failed',response.status,detail);
   throw new AdminError('Something went wrong talking to the database. Please try again.',502);
 }
 
 const WEEK_DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const SUPPLIER_AREAS=['Bar','Kitchen','Barista'];
 function cleanText(value,max){const text=String(value??'').trim();return text?text.slice(0,max):null}
 // partial=true validates only the fields sent (edits, archive/restore); false requires a full supplier.
 function supplierFromBody(body,partial){
@@ -85,6 +87,11 @@ function supplierFromBody(body,partial){
     const email=cleanText(body.order_email,200);
     if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw new AdminError('Enter a valid ordering email address.');
     out.order_email=email;
+  }
+  if(has('areas')){
+    const areas=Array.isArray(body.areas)?body.areas:[];
+    if(areas.some(area=>!SUPPLIER_AREAS.includes(area)))throw new AdminError('Choose areas from Bar, Kitchen and Barista.');
+    out.areas=SUPPLIER_AREAS.filter(area=>areas.includes(area));
   }
   for(const key of ['order_days','delivery_days'])if(has(key)){
     const days=Array.isArray(body[key])?body[key]:[];
