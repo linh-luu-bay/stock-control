@@ -79,8 +79,9 @@ The database side is three migration files in `project/supabase/migrations/`, ap
 | `20260924120000_admin_suppliers.sql` | Creates the `suppliers` table and pre-fills it with the supplier names already on stock items. |
 | `20260924120100_admin_change_log.sql` | Creates the read-only `change_log` table and the Postgres triggers that fill it for `suppliers`, `users` and stock items. Stock items live inside `app_state`, so a trigger compares each save item by item. On-hand counts and photos aren't logged. |
 | `20260924120200_admin_access.sql` | Manager-only row-level security policies, the "can't remove your own / the last manager" guard, and the two functions the Change log screen uses. |
+| `20261012120000_supplier_order_emails.sql` | **Admin → Settings** (`venue_settings`: venue address, phone, email, sender) and supplier order emails (`order_requests`). Order references `BAY-YYYYMMDD-NN` are handed out by the database, so two devices never get the same number. The app never sends email: a manager sends it from their own email app, then taps **Mark as sent**. Needs the three admin migrations first. |
 
-All three are safe to run more than once. To watch another table later, add one line to a new migration: `select enable_change_log('table_name', 'id_column', 'name_column');`.
+All of these are safe to run more than once. To watch another table later, add one line to a new migration: `select enable_change_log('table_name', 'id_column', 'name_column');`.
 
 ### Applying the migrations to staging
 
@@ -119,7 +120,7 @@ The Worker hands the page only `SUPABASE_URL` and `SUPABASE_ANON_KEY`, which is 
 
 ### Going live: order matters
 
-1. Apply the three migrations to the **live** Supabase project, the same way as step 2 above. The current live app keeps working with them in place.
+1. Apply any new migrations to the **live** Supabase project, the same way as step 2 above. The current live app keeps working with them in place.
 2. Merge the pull request. Cloudflare deploys `main` automatically.
 
 If the code goes live before the migrations, stock keeps working, but Staff accounts and the rest of Admin show "The admin area's database changes haven't been applied yet" until they are.

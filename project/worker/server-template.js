@@ -53,7 +53,8 @@ const CONSTRAINT_MESSAGES={
   suppliers_min_order_not_negative:'The minimum order can’t be negative.',
   suppliers_order_days_valid:'Choose order days from Monday to Sunday.',
   suppliers_delivery_days_valid:'Choose delivery days from Monday to Sunday.',
-  users_pkey:'An account with that email address already exists.'
+  users_pkey:'An account with that email address already exists.',
+  venue_settings_email_format:'Enter a valid venue email address.'
 };
 async function asUser(env,token,path,init={}){
   if(!env.SUPABASE_ANON_KEY)throw new AdminError('The admin area isn’t set up on this server yet (SUPABASE_ANON_KEY is missing).',503);
@@ -108,6 +109,38 @@ function supplierFromBody(body,partial){
   if(has('archived'))out.archived=body.archived===true;
   return out;
 }
+// Admin → Settings. Only these fields can be changed; the single row always exists.
+function settingsFromBody(body){
+  const out={};
+  for(const key of ['venue_phone','sender_name','sender_role'])if(Object.prototype.hasOwnProperty.call(body,key))out[key]=cleanText(body[key],120);
+  if(Object.prototype.hasOwnProperty.call(body,'venue_address'))out.venue_address=cleanText(body.venue_address,500);
+  if(Object.prototype.hasOwnProperty.call(body,'venue_email')){
+    const email=cleanText(body.venue_email,200);
+    if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw new AdminError('Enter a valid venue email address.');
+    out.venue_email=email;
+  }
+  return out;
+}
+// The details of a supplier order email. The email itself is never sent from here: a person
+// sends it from their own mail app and then confirms it, which is what marks it as sent.
+const ORDER_AREAS=['Bar','Kitchen','Barista'];
+function orderItemsFromBody(items){
+  if(!Array.isArray(items)||!items.length)throw new AdminError('There are no items in this order.');
+  if(items.length>300)throw new AdminError('That order has too many items. Split it into smaller orders.');
+  return items.map(item=>{
+    const name=cleanText(item?.name,160),quantity=Number(item?.quantity),packSize=Number(item?.pack_size);
+    if(!name||!Number.isFinite(quantity)||quantity<=0)throw new AdminError('Every item in the order needs a name and a quantity above zero.');
+    return{item_id:cleanText(item.item_id,80),name,quantity,pack_name:cleanText(item.pack_name,60),pack_size:Number.isFinite(packSize)&&packSize>0?packSize:1,unit:cleanText(item.unit,40)};
+  });
+}
+function orderDetailsFromBody(body){
+  const date=cleanText(body.delivery_date,10);
+  if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new AdminError('Choose a delivery date.');
+  const email=cleanText(body.email_to,200);
+  if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw new AdminError('The supplier’s ordering email isn’t valid. Fix it in Admin → Suppliers.');
+  return{p_items:orderItemsFromBody(body.items),p_delivery_date:date,p_delivery_window:cleanText(body.delivery_window,120),p_order_notes:cleanText(body.order_notes,1000),p_email_to:email};
+}
+function hobartToday(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Hobart',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
 async function getUserByEmail(env,email){
   const response=await supabaseRequest(env,`/users?email=eq.${encodeURIComponent(email)}&select=email,user_id,name,role,active`);
   const rows=await response.json();
@@ -353,6 +386,42 @@ async function handleAdmin(request,env,url,user,token){
     const rows=await (await asUser(env,token,`/suppliers?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(changes)})).json();
     if(!rows.length)throw new AdminError('That supplier couldn’t be found.',404);
     return json(rows[0]);
+  }
+  if(path==='/api/admin/settings'&&method==='GET'){
+    const rows=await (await asUser(env,token,'/venue_settings?id=eq.1&select=*')).json();
+    if(!rows.length)throw new AdminError('The settings database changes haven’t been applied yet. Run the supplier order email migration (see README) and try again.',503);
+    return json(rows[0]);
+  }
+  if(path==='/api/admin/settings'&&method==='PATCH'){
+    const changes=settingsFromBody(await readBody());
+    if(!Object.keys(changes).length)throw new AdminError('There was nothing to save.');
+    const rows=await (await asUser(env,token,'/venue_settings?id=eq.1',{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(changes)})).json();
+    if(!rows.length)throw new AdminError('The settings database changes haven’t been applied yet. Run the supplier order email migration (see README) and try again.',503);
+    return json(rows[0]);
+  }
+  if(path==='/api/admin/order-requests'&&method==='GET'){
+    // Open drafts from any day, plus everything from today, for the Reorder list.
+    const query=`/order_requests?select=*&or=(status.eq.draft,order_date.gte.${hobartToday()})&order=created_at.desc&limit=200`;
+    return json(await (await asUser(env,token,query)).json());
+  }
+  if(path==='/api/admin/order-requests'&&method==='POST'){
+    const body=await readBody();
+    const supplierId=cleanText(body.supplier_id,36),supplierName=cleanText(body.supplier_name,120),area=String(body.area||'');
+    if(supplierId&&!/^[0-9a-f-]{36}$/i.test(supplierId))throw new AdminError('That supplier couldn’t be found.',404);
+    if(!supplierName)throw new AdminError('Choose a supplier for this order.');
+    if(!ORDER_AREAS.includes(area))throw new AdminError('Choose Bar, Kitchen or Barista for this order.');
+    const params={p_supplier_id:supplierId,p_supplier_name:supplierName,p_area:area,...orderDetailsFromBody(body)};
+    return json(await (await asUser(env,token,'/rpc/create_order_request',{method:'POST',body:JSON.stringify(params)})).json(),201);
+  }
+  if((path==='/api/admin/order-requests/sent'||path==='/api/admin/order-requests/cancel')&&method==='POST'){
+    const id=url.searchParams.get('id')||'';
+    if(!/^[0-9a-f-]{36}$/i.test(id))throw new AdminError('That order couldn’t be found.',404);
+    const body=await readBody();
+    if(path.endsWith('/cancel'))return json(await (await asUser(env,token,'/rpc/cancel_order_request',{method:'POST',body:JSON.stringify({p_id:id,p_reason:cleanText(body.reason,500)})})).json());
+    const subject=cleanText(body.email_subject,300),emailBody=cleanText(body.email_body,20000);
+    if(!subject||!emailBody)throw new AdminError('The email subject and text can’t be empty.');
+    const params={p_id:id,...orderDetailsFromBody(body),p_email_subject:subject,p_email_body:emailBody};
+    return json(await (await asUser(env,token,'/rpc/mark_order_request_sent',{method:'POST',body:JSON.stringify(params)})).json());
   }
   if(path==='/api/admin/change-log'&&method==='GET'){
     const params=url.searchParams,day=key=>/^\d{4}-\d{2}-\d{2}$/.test(params.get(key)||'')?params.get(key):null,value=key=>(params.get(key)||'').trim()||null,before=Number(params.get('before'));
