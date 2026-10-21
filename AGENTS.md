@@ -164,3 +164,45 @@ No / Yes: (what it touches; flag Linh to review)
 ## 10. When unsure
 
 Stop and ask the user rather than guessing. If it's still unclear, recommend checking with Linh.
+
+## 11. Supabase: new tables (required from 30 Oct 2026)
+
+From 30 October 2026, Supabase stops exposing new tables in the `public` schema to the Data API
+(PostgREST, which the Worker calls at `/rest/v1`) automatically. A new table without explicit
+grants fails with "permission denied" (error `42501`). Existing tables are not affected. Database
+changes are still a protected area (section 3): migrations are files in
+`project/supabase/migrations/`, and only Linh applies them, to staging first.
+
+**This app's requests arrive as: `service_role` or `authenticated`, never `anon`.**
+
+- Sign-in is Google *through Supabase Auth* (`/auth/v1/authorize?provider=google` in
+  `index.html`), so signed-in users hold real Supabase access tokens.
+- The browser never calls the Data API. Every `/rest/v1` request comes from the Worker
+  (`project/worker/server-template.js`):
+  - `supabaseRequest()` sends the service role key, so it runs as **`service_role`** (which skips
+    RLS). Used for stock state (`app_state`, `save_app_state`), sign-in checks (`users`) and
+    `audit_events` / recovery points.
+  - `asUser()` sends the anon key as `apikey` but the signed-in user's own token as
+    `Authorization`, so it runs as **`authenticated`** with RLS applied. Used for every
+    `/api/admin/*` route.
+- The anon key is only used by the browser for sign-in calls (`/auth/v1/...`), never for table
+  access. Don't grant anything on new tables to `anon`.
+
+Rules:
+
+- Every new table in the public schema must include, in the SAME migration that creates it:
+  1. Explicit GRANT statements for the role that will reach it: `service_role` if the Worker uses
+     it through `supabaseRequest()`, `authenticated` if it goes through `asUser()`, and not `anon`.
+     Grant only the privileges actually needed (e.g. `select` only if the table is read-only;
+     column lists for insert/update, as `users` does). Follow the existing pattern:
+     `revoke all on <table> from anon, authenticated;` then the grants
+     (see `20261012120000_supplier_order_emails.sql`).
+  2. `alter table ... enable row level security;` plus RLS policies that match how the app uses
+     the table (e.g. managers only, via `is_manager()`). `service_role` skips RLS, so policies
+     are what protect `authenticated` access.
+  3. If the table uses a sequence (serial/identity column), also
+     `grant usage, select on sequence ... to` the same role(s).
+- Never run `alter default privileges` to auto-expose new tables. Access must be granted per
+  table, on purpose.
+- Before finishing any task that adds a table, confirm the grants and RLS policies are in the
+  migration.
