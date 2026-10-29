@@ -81,6 +81,7 @@ The database side is three migration files in `project/supabase/migrations/`, ap
 | `20260924120200_admin_access.sql` | Manager-only row-level security policies, the "can't remove your own / the last manager" guard, and the two functions the Change log screen uses. |
 | `20261012120000_supplier_order_emails.sql` | **Admin → Settings** (`venue_settings`: venue address, phone, email, sender) and supplier order emails (`order_requests`). Order references `BAY-YYYYMMDD-NN` are handed out by the database, so two devices never get the same number. The app never sends email: a manager sends it from their own email app, then taps **Mark as sent**. Needs the three admin migrations first. |
 | `20261013120000_supplier_areas.sql` | Adds `suppliers.areas` (any of Bar, Kitchen, Barista; none ticked means every area) and pre-fills it once from the areas each supplier is used in on stock items. Only suppliers with no areas yet are filled, so re-running never overwrites areas set by hand. |
+| `20261029120000_log_typed_counts.sql` | Logs hand-set counts in the change log's **Stock counts** section: each new "count adjustment" (typed straight into a quantity box) or "physical correction" history entry becomes one entry with the before and after count and the optional reason. Other count changes stay in History only. Needs the three admin migrations first. |
 
 All of these are safe to run more than once. To watch another table later, add one line to a new migration: `select enable_change_log('table_name', 'id_column', 'name_column');`.
 
