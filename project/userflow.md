@@ -7,7 +7,7 @@ Roles referenced throughout: **staff** (count/record only), **supervisor** (staf
 1. Page requests `GET /api/bootstrap`.
 2. On failure → the whole page is replaced with an error card ("Stock records unavailable") telling the user to refresh or contact a manager. There is no retry button here, only a manual refresh.
 3. On success → `currentUser`, `serverRevision`, and shared `data`/`history`/`stocktakes` are set; the header shows the signed-in name and role; role-gated buttons are shown/hidden.
-4. If this browser has an unsaved draft for this user's email (from a previous failed/interrupted save), it is silently recovered into memory and the sync bar reports either "Recovered unsaved work — use Retry save" or, if the draft's base revision no longer matches, a conflict banner.
+4. If this browser has an unsaved draft for this user's email (from a previous failed/interrupted save), it is silently recovered into memory and the sync bar reports "Recovered unsaved work — use Retry save", or, if the draft's base revision no longer matches, the page merges it with the latest shared records automatically (see section 10).
 
 ## 2. Everyday quantity count (inline)
 
@@ -64,10 +64,13 @@ Roles referenced throughout: **staff** (count/record only), **supervisor** (staf
 
 ## 10. Handle a save conflict
 
-1. A `PUT /api/state` that returns `409` means someone else saved first. The footer switches to "Not saved — another person changed stock" and reveals "Resolve conflict."
-2. Opening it re-fetches `/api/bootstrap` and diffs the user's local data against the latest shared quantities by item ID, listing only genuinely differing products.
-3. User options: **Recheck shared records** (re-diff), **Download my local changes** (safety export before doing anything destructive), or **Discard local changes and reload** (confirmed via a native `confirm()`, then a full page reload against the latest shared state).
-4. There is no automatic merge — reconciliation is manual, by design (per `TRIAL-READINESS.md`'s "manual reconciliation is still required").
+1. A `PUT /api/state` that returns `409` means someone else saved first. The page re-fetches `/api/bootstrap` and merges automatically ("Someone else saved at the same time — adding your changes to theirs…"):
+   - This device's own new history entries (those not yet in the shared history) are re-applied on top of the latest shared stock. Deliveries, wastage, staff meals and transfers are re-applied as amounts; typed counts, physical corrections and stocktake counts are set numbers. Each entry's before/after is rewritten to match the latest stock, so the server's history check still passes.
+   - Item details this device changed since it last loaded or saved (`base`) are kept; other people's edits to other details are kept too.
+   - Then it saves again. Items are updated in place, so open forms keep pointing at the right product.
+2. Only when this device set a count for an item that someone else also changed does it stop and open **Choose which numbers to keep**, one row per item ("Someone else" with their name and movement, or "You"). Choosing re-runs the merge and saves.
+3. After three merges in a row that still fail, or if the latest records can't be loaded, it falls back to the manual **Resolve save conflict** dialog: **Recheck shared records**, **Download my local changes**, or **Discard local changes and reload**.
+4. Separately, every 60 seconds and whenever the app is reopened, a device with nothing waiting to save, no dialog open and no box being typed in loads the latest shared records, so people see each other's changes without reloading.
 
 ## 11. Offline / interrupted-session resilience
 
