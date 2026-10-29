@@ -7,7 +7,7 @@ Do not begin the two-week operational trial until the remaining checks below pas
 - Independent authentication: Google OAuth via Supabase Auth. The Worker verifies each session token directly with Supabase, then gates on the `users` table — only a pre-existing active row gets in, using that row's own name/role. No self-enrolment; a Google profile alone grants nothing. An unrecognised or disabled account sees "You don't have access" and is signed out immediately, closing the account-disabling half of item 1 below.
 - Shared API removes cost, price, margin and valuation fields recursively for staff and supervisors.
 - Only previously registered active accounts may use the API. No first-visitor manager assignment or automatic staff creation.
-- Failed writes retain a per-account draft. Conflicts stop saving without discarding the draft. Manual reconciliation is still required.
+- Failed writes retain a per-account draft. On a conflict the page merges its own changes into the latest shared records automatically and only asks when two people set the count of the same item; manual reconciliation remains as a fallback (see `project/userflow.md` §10).
 - Retried requests carry a stable request ID; acknowledged requests cannot be applied twice while still the latest saved request. Later intervening writes produce a conflict for review.
 - Server validates non-negative finite stock and PAR quantities.
 - Each successful update atomically preserves the previous stock state in a recovery snapshot (now via a Postgres function, `save_app_state` in `supabase/schema.sql`, instead of a D1 batch write — same atomicity guarantee). Managers can download the latest 30 snapshots; older snapshots remain stored.

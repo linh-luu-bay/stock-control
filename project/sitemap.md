@@ -54,7 +54,8 @@ The shared frontend is a single HTML page (no router, no URL changes). "Screens"
 
 | Dialog | Opened from | Role gate | Purpose |
 |---|---|---|---|
-| Resolve save conflict | Footer "Resolve conflict" (auto-shown on save conflict) | any | Compare local vs. shared quantities after a 409; download, recheck, or discard local changes |
+| Choose which numbers to keep | Opens by itself after a 409 when someone else changed the count of the same item; also from "Resolve conflict" | any | Pick "Someone else" or "You" for each clashing count; everything else merges automatically |
+| Resolve save conflict | Banner / footer "Resolve conflict" when automatic merging can't finish | any | Compare local vs. shared quantities after a 409; download, recheck, or discard local changes |
 | Reorder list | "Reorder list" | supervisor, manager | Generated supplier-grouped reorder text; copy or download CSV |
 | Weekly stock history | "History" | supervisor, manager | Per-week movement/audit log; download CSV |
 | Record stock movement | "Record movement" | all | Log delivery / wastage / transfer / staff meal / correction against one product |
