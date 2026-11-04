@@ -19,7 +19,8 @@ The shared frontend is a single HTML page (no router, no URL changes). "Screens"
 ├─ Area tabs (persistent, client-side state only)
 │  ├─ Bar        (default)
 │  ├─ Kitchen
-│  └─ Barista
+│  ├─ Barista
+│  └─ Cleaning   (categories: Bar, Kitchen, Barista; no transfers)
 │
 ├─ Stats row (persistent, recalculated per area/filter)
 │  ├─ Items tracked
