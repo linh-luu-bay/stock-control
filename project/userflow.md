@@ -11,7 +11,7 @@ Roles referenced throughout: **staff** (count/record only), **supervisor** (staf
 
 ## 2. Everyday quantity count (inline)
 
-1. User picks an area tab (Bar/Kitchen/Barista) — client-side only, no reload.
+1. User picks an area tab (Bar/Kitchen/Barista/Cleaning) — client-side only, no reload.
 2. User optionally switches the target selector (Default/Day/Evening/Event) to see the relevant PAR column, and/or searches by name.
 3. Staff/supervisor/manager types a new on-hand number directly into a row's quantity input (disabled for staff role... **note**: code disables the input when role is `staff`, so plain staff cannot edit quantity inline — they must use Record movement or Start stocktake instead).
 4. On change, the previous value is diffed and a `count_adjustment` history entry is written; the row and stats re-render; a debounced save (500 ms) pushes to `/api/state`.
@@ -21,7 +21,7 @@ Roles referenced throughout: **staff** (count/record only), **supervisor** (staf
 1. Any role clicks "Record movement" (blocked with an alert if the current area has no active products).
 2. Choose movement type: Delivery received, Wastage/breakage, Transfer between areas, Staff meal/complimentary, Physical count correction — the quantity label and help text swap per type.
 3. Choose product (scoped to the active area); enter quantity; managers additionally see an optional unit-cost field for deliveries.
-4. Transfer type reveals a destination-area selector; submitting a transfer that exceeds on-hand stock is rejected with an alert before any state changes.
+4. Transfer type reveals a destination-area selector (Bar, Kitchen or Barista). Transfer isn't offered on the Cleaning tab, and Cleaning isn't a destination; submitting a transfer that exceeds on-hand stock is rejected with an alert before any state changes.
 5. On submit: on-hand quantity is adjusted (or, for transfer, split into a `transfer_out` entry here and a `transfer_in` entry on a matching/created product in the destination area); a history entry is written for each side; state is saved and the dialog closes.
 
 ## 4. Start and submit a stocktake
