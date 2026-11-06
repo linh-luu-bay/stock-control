@@ -128,6 +128,130 @@ function settingsFromBody(body){
   }
   return out;
 }
+// Admin → Categories. Each area's categories and their subgroups, in the order staff see them,
+// are kept in the shared stock document as `layout`, next to the items that use them, so a
+// rename and the matching item updates are saved together in one step. Nothing is deleted:
+// categories and subgroups are archived ({archived:true}) and can be restored.
+const LAYOUT_AREAS=['Bar','Kitchen','Barista','Cleaning'];
+const DEFAULT_CATEGORIES={Bar:['Spirits','Beer','Wine','Mixers','Garnishes & perishables','Equipment'],Kitchen:['Produce & perishables','Meat & seafood','Bread','Dry store','Dairy & refrigerated','Frozen','Consumables','Equipment'],Barista:['Retail Items','Stationery and Point of Sale','Coffee and Hot Beverage Ingredients','Syrups','Tea','Milk, Alternative Milk and Cream','Juice, Water and Cold Drinks','Takeaway Packaging and Consumables','Kitchen and Food-Handling Consumables'],Cleaning:['Bar','Kitchen','Barista']};
+function usedSubgroups(data,areaKey,category){return[...new Set((data||[]).filter(x=>x.a===areaKey&&x.c===category&&x.group).map(x=>String(x.group)))].sort((a,b)=>a.localeCompare(b))}
+// Until a manager first changes something, the layout is today's built-in list, with the
+// subgroups the items already use.
+function defaultLayout(data){return{areas:LAYOUT_AREAS.map(key=>({key,name:key,categories:DEFAULT_CATEGORIES[key].map(name=>({name,subgroups:usedSubgroups(data,key,name).map(group=>({name:group}))}))}))}}
+function layoutOf(value){return value?.layout&&Array.isArray(value.layout.areas)?value.layout:defaultLayout(value?.data)}
+function layoutName(value){return String(value??'').replace(/\s+/g,' ').trim().slice(0,80)}
+function sameName(a,b){return String(a).toLowerCase()===String(b).toLowerCase()}
+// The same item key the change log trigger uses (supabase/migrations/20260924120100_admin_change_log.sql).
+function logItemKey(item){return item.id||`${item.a}|${String(item.n||'').toLowerCase()}`}
+// Applies one change to `layout` and `data` (both copies, changed in place). Returns what the
+// change log records: one entry for the change, plus the items it moved, which the item log
+// leaves out so a rename shows as one line rather than one per item.
+function changeLayout(layout,data,body){
+  const action=String(body?.action||''),area=layout.areas.find(a=>a.key===body?.area);
+  if(!area)throw new AdminError('That section couldn’t be found.',404);
+  const stale=' Someone may have just changed it. Go back to the stock screen and open this page again.';
+  const items=data.filter(x=>x.a===area.key),count=n=>`${n} item${n===1?'':'s'}`;
+  const active=list=>list.filter(x=>!x.archived);
+  const findCategory=name=>{const found=area.categories.find(c=>c.name===name);if(!found)throw new AdminError('That category couldn’t be found.'+stale,404);return found};
+  const newName=(list,current,what)=>{
+    const name=layoutName(body.name);
+    if(!name)throw new AdminError(`Type a name for the ${what}.`);
+    if(current&&name===current.name)throw new AdminError('That’s the name it already has.');
+    const clash=list.find(x=>x!==current&&sameName(x.name,name));
+    if(clash)throw new AdminError(clash.archived?`There’s an archived ${what} called “${clash.name}”. Restore it from the archived list instead.`:`There’s already a ${what} called “${clash.name}” in ${area.name}.`);
+    return name;
+  };
+  // Moves an entry one place up or down among the active ones, skipping archived entries.
+  const move=(list,entry,what)=>{
+    const shown=active(list),at=shown.indexOf(entry),to=body.direction==='up'?at-1:at+1;
+    if(entry.archived||at<0)throw new AdminError(`Restore that ${what} before moving it.`);
+    if(to<0||to>=shown.length)throw new AdminError(`That ${what} is already at the ${body.direction==='up'?'top':'bottom'}.`);
+    const a=list.indexOf(entry),b=list.indexOf(shown[to]);[list[a],list[b]]=[list[b],list[a]];
+    return{before:at+1,after:to+1};
+  };
+  const result=(record,logAction,before,after,moved=[])=>({action:logAction,record,before,after,itemIds:moved.map(logItemKey)});
+  if(action.endsWith('-category')){
+    const base={kind:'category',a:area.name};
+    if(action==='add-category'){
+      const name=newName(area.categories,null,'category');
+      area.categories.push({name,subgroups:[]});
+      return result(`${area.key}|${name}`,'insert',null,{...base,c:name});
+    }
+    const category=findCategory(body.category),record=`${area.key}|${category.name}`,inCategory=items.filter(x=>x.c===category.name);
+    if(action==='rename-category'){
+      if(category.archived)throw new AdminError('Restore that category before renaming it.');
+      const name=newName(area.categories,category,'category'),old=category.name;
+      inCategory.forEach(x=>{x.c=name});category.name=name;
+      return result(record,'update',{...base,c:old,items:inCategory.length},{...base,c:name,items:inCategory.length},inCategory);
+    }
+    if(action==='move-category'){
+      const position=move(area.categories,category,'category');
+      return result(record,'update',{...base,c:category.name,position:position.before},{...base,c:category.name,position:position.after});
+    }
+    if(action==='archive-category'){
+      if(category.archived)throw new AdminError('That category is already archived.');
+      if(active(area.categories).length===1)throw new AdminError(`${area.name} needs at least one category, so this one can’t be archived.`);
+      let target=null;
+      if(inCategory.length){
+        target=area.categories.find(c=>c.name===body.to&&!c.archived&&c!==category);
+        if(!target)throw new AdminError(`Choose which category to move its ${count(inCategory.length)} to.`);
+        inCategory.forEach(x=>{x.c=target.name});
+        // Their subgroups move with them, so the new category lists them too.
+        usedSubgroups(inCategory,area.key,target.name).forEach(group=>{if(!target.subgroups.some(g=>g.name===group))target.subgroups.push({name:group})});
+      }
+      category.archived=true;
+      return result(record,'archive',{...base,c:category.name,items:inCategory.length},{...base,c:category.name,items:inCategory.length,moved_to:target?target.name:null},inCategory);
+    }
+    if(action==='restore-category'){
+      if(!category.archived)throw new AdminError('That category isn’t archived.');
+      delete category.archived;
+      return result(record,'restore',{...base,c:category.name},{...base,c:category.name});
+    }
+  }
+  if(action.endsWith('-subgroup')){
+    const category=findCategory(body.category);
+    if(category.archived)throw new AdminError('Restore that category before changing its subgroups.');
+    const inCategory=items.filter(x=>x.c===category.name),base={kind:'subgroup',a:area.name,c:category.name};
+    // Subgroups typed straight into an item join the list the first time they're managed here.
+    category.subgroups=Array.isArray(category.subgroups)?category.subgroups:[];
+    usedSubgroups(inCategory,area.key,category.name).forEach(group=>{if(!category.subgroups.some(g=>g.name===group))category.subgroups.push({name:group})});
+    if(action==='add-subgroup'){
+      const name=newName(category.subgroups,null,'subgroup');
+      category.subgroups.push({name});
+      return result(`${area.key}|${category.name}|${name}`,'insert',null,{...base,group:name});
+    }
+    const subgroup=category.subgroups.find(g=>g.name===body.subgroup);
+    if(!subgroup)throw new AdminError('That subgroup couldn’t be found.'+stale,404);
+    const record=`${area.key}|${category.name}|${subgroup.name}`,inSubgroup=inCategory.filter(x=>x.group===subgroup.name);
+    if(action==='rename-subgroup'){
+      if(subgroup.archived)throw new AdminError('Restore that subgroup before renaming it.');
+      const name=newName(category.subgroups,subgroup,'subgroup'),old=subgroup.name;
+      inSubgroup.forEach(x=>{x.group=name});subgroup.name=name;
+      return result(record,'update',{...base,group:old,items:inSubgroup.length},{...base,group:name,items:inSubgroup.length},inSubgroup);
+    }
+    if(action==='move-subgroup'){
+      const position=move(category.subgroups,subgroup,'subgroup');
+      return result(record,'update',{...base,group:subgroup.name,position:position.before},{...base,group:subgroup.name,position:position.after});
+    }
+    if(action==='archive-subgroup'){
+      if(subgroup.archived)throw new AdminError('That subgroup is already archived.');
+      let target=null;
+      if(inSubgroup.length){
+        // An empty `to` means "No subgroup".
+        if(body.to!==''){target=category.subgroups.find(g=>g.name===body.to&&!g.archived&&g!==subgroup);if(!target)throw new AdminError(`Choose where to move its ${count(inSubgroup.length)}.`)}
+        inSubgroup.forEach(x=>{x.group=target?target.name:''});
+      }
+      subgroup.archived=true;
+      return result(record,'archive',{...base,group:subgroup.name,items:inSubgroup.length},{...base,group:subgroup.name,items:inSubgroup.length,moved_to:inSubgroup.length?(target?target.name:'No subgroup'):null},inSubgroup);
+    }
+    if(action==='restore-subgroup'){
+      if(!subgroup.archived)throw new AdminError('That subgroup isn’t archived.');
+      delete subgroup.archived;
+      return result(record,'restore',{...base,group:subgroup.name},{...base,group:subgroup.name});
+    }
+  }
+  throw new AdminError('That change isn’t recognised. Refresh the page and try again.');
+}
 // The details of a supplier order email. The email itself is never sent from here: a person
 // sends it from their own mail app and then confirms it, which is what marks it as sent.
 const ORDER_AREAS=['Bar','Kitchen','Barista','Cleaning'];
@@ -307,7 +431,10 @@ function secureState(incoming, previous, user){
   const oldStocktakes=Array.isArray(previous.stocktakes)?previous.stocktakes:[];
   const knownStocktakes=new Set(oldStocktakes.map(s=>s.id));
   const newStocktakes=(Array.isArray(incoming.stocktakes)?incoming.stocktakes:[]).filter(s=>s?.id&&!knownStocktakes.has(s.id)).map(s=>({...s,at:now(),recordedBy:user.name,recordedByEmail:user.email,status:'submitted'}));
-  return{ok:true,state:{data,history,stocktakes:[...newStocktakes,...oldStocktakes]}};
+  // The category layout is only changed through Admin → Categories (/api/admin/layout), never by a
+  // stock save, so every save keeps the stored one as it is.
+  const kept={};if(previous.layout)kept.layout=previous.layout;if(previous._layoutChange)kept._layoutChange=previous._layoutChange;
+  return{ok:true,state:{data,history,stocktakes:[...newStocktakes,...oldStocktakes],...kept}};
 }
 
 async function audit(env,user,action,details){
@@ -331,7 +458,7 @@ async function handleApi(request,env,url,ctx){
   }
   if(url.pathname==='/api/bootstrap'&&request.method==='GET'){
     const row=await getAppState(env);
-    return json({user,hasState:Boolean(row),state:row?visibleState(row.value,user):null,revision:Number(row?.revision||0)});
+    return json({user,hasState:Boolean(row),state:row?visibleState(row.value,user):null,revision:Number(row?.revision||0),layout:layoutOf(row?.value)});
   }
   if(url.pathname==='/api/state'&&request.method==='PUT'){
     const raw=await request.text();
@@ -405,6 +532,26 @@ async function handleAdmin(request,env,url,user,token){
     const rows=await (await asUser(env,token,'/venue_settings?id=eq.1',{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(changes)})).json();
     if(!rows.length)throw new AdminError('The settings database changes haven’t been applied yet. Run the supplier order email migration (see README) and try again.',503);
     return json(rows[0]);
+  }
+  if(path==='/api/admin/layout'&&method==='POST'){
+    // One category or subgroup change, applied to the latest stored stock document and saved in
+    // one step, retrying if a stock save lands at the same moment. Devices pick it up like any
+    // other save (their next save or refresh merges it in).
+    const body=await readBody();
+    for(let attempt=0;attempt<3;attempt++){
+      const row=await getAppState(env);
+      if(!row)throw new AdminError('There are no shared stock records yet. Open the stock screen first, then try again.',409);
+      const previous=row.value||{},revision=Number(row.revision||0);
+      const layout=structuredClone(layoutOf(previous)),data=(Array.isArray(previous.data)?previous.data:[]).map(item=>({...item}));
+      const stamp=now(),change=changeLayout(layout,data,body);
+      const state={...previous,data,layout,_layoutChange:{id:crypto.randomUUID(),at:stamp,...change}};
+      const snapshot={format:'bay-bellerive-stock-backup',version:1,exportedAt:stamp,revision,...previous};
+      const newRevision=await saveAppStateAtomic(env,{expectedRevision:revision,value:state,stamp,actorEmail:user.email,actorName:user.name,actorRole:user.role,snapshot});
+      if(newRevision==null)continue;
+      await audit(env,user,'layout_changed',{action:body.action,record:change.record,items:change.itemIds.length});
+      return json({ok:true,layout,revision:Number(newRevision)});
+    }
+    throw new AdminError('Someone saved stock at the same moment. Please try again.',409);
   }
   if(path==='/api/admin/order-requests'&&method==='GET'){
     // Open drafts from any day, plus everything from today, for the Reorder list.
