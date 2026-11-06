@@ -83,6 +83,7 @@ The database side is three migration files in `project/supabase/migrations/`, ap
 | `20261013120000_supplier_areas.sql` | Adds `suppliers.areas` (any of Bar, Kitchen, Barista; none ticked means every area) and pre-fills it once from the areas each supplier is used in on stock items. Only suppliers with no areas yet are filled, so re-running never overwrites areas set by hand. |
 | `20261029120000_log_typed_counts.sql` | Logs hand-set counts in the change log's **Stock counts** section: each new "count adjustment" (typed straight into a quantity box) or "physical correction" history entry becomes one entry with the before and after count and the optional reason. Other count changes stay in History only. Needs the three admin migrations first. |
 | `20261104120000_cleaning_area.sql` | Allows the new **Cleaning** area on supplier areas and supplier orders. Apply before merging the Cleaning tab, or ticking Cleaning on a supplier and ordering from the Cleaning tab fail. Needs `20261012120000` and `20261013120000` first. |
+| `20261106120000_category_layout_log.sql` | Records Admin → **Categories** changes (adding, renaming, reordering, archiving and restoring categories and subgroups) in the change log as one entry each, instead of one entry per moved item. Apply before merging the Categories screen, or those changes are logged item by item. No new tables. |
 
 All of these are safe to run more than once. To watch another table later, add one line to a new migration: `select enable_change_log('table_name', 'id_column', 'name_column');`.
 

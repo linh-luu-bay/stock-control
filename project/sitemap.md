@@ -34,7 +34,7 @@ The shared frontend is a single HTML page (no router, no URL changes). "Screens"
 │  ├─ "History" button ────────────────► Weekly stock history dialog   [hidden for staff]
 │  ├─ "Show discontinued" toggle                                       [manager only]
 │  ├─ "Reorder list" button ───────────► Reorder list dialog           [hidden for staff]
-│  └─ Item table, grouped by category
+│  └─ Item table, grouped by category (order and names set in Admin → Categories)
 │     └─ per-row actions (inline, not dialogs):
 │        ├─ Photo button → file picker (camera capture)                [manager only]
 │        ├─ Remove photo                                               [manager only]
@@ -68,10 +68,11 @@ The shared frontend is a single HTML page (no router, no URL changes). "Screens"
 
 ## Backend endpoints the page depends on
 
-- `GET /api/bootstrap` — initial user identity, revision, and shared state (`data`, `history`, `stocktakes`).
+- `GET /api/bootstrap` — initial user identity, revision, shared state (`data`, `history`, `stocktakes`) and `layout` (each area's categories and subgroups, in order; archived ones are flagged).
 - `PUT /api/state` — save shared state; idempotent via `requestId`, returns `409` on conflict.
 - `GET /api/users`, `POST /api/users` — staff account list/create/update.
 - `GET /api/recovery`, `GET /api/recovery?id=` — list and download server-side recovery snapshots.
+- `POST /api/admin/layout` — Admin → Categories (managers): one change per request (add, rename, move up/down, archive with "move items to", restore a category or subgroup). Updates the layout and the affected items together and returns the new `layout` and revision.
 
 ## Not part of this sitemap
 
