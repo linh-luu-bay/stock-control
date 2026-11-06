@@ -53,7 +53,7 @@ const CONSTRAINT_MESSAGES={
   suppliers_min_order_not_negative:'The minimum order can’t be negative.',
   suppliers_order_days_valid:'Choose order days from Monday to Sunday.',
   suppliers_delivery_days_valid:'Choose delivery days from Monday to Sunday.',
-  suppliers_areas_valid:'Choose areas from Bar, Kitchen and Barista.',
+  suppliers_areas_valid:'Choose areas from Bar, Kitchen, Barista and Cleaning.',
   users_pkey:'An account with that email address already exists.',
   venue_settings_email_format:'Enter a valid venue email address.'
 };
@@ -75,7 +75,7 @@ async function asUser(env,token,path,init={}){
 }
 
 const WEEK_DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const SUPPLIER_AREAS=['Bar','Kitchen','Barista'];
+const SUPPLIER_AREAS=['Bar','Kitchen','Barista','Cleaning'];
 function cleanText(value,max){const text=String(value??'').trim();return text?text.slice(0,max):null}
 // partial=true validates only the fields sent (edits, archive/restore); false requires a full supplier.
 function supplierFromBody(body,partial){
@@ -90,7 +90,7 @@ function supplierFromBody(body,partial){
   }
   if(has('areas')){
     const areas=Array.isArray(body.areas)?body.areas:[];
-    if(areas.some(area=>!SUPPLIER_AREAS.includes(area)))throw new AdminError('Choose areas from Bar, Kitchen and Barista.');
+    if(areas.some(area=>!SUPPLIER_AREAS.includes(area)))throw new AdminError('Choose areas from Bar, Kitchen, Barista and Cleaning.');
     out.areas=SUPPLIER_AREAS.filter(area=>areas.includes(area));
   }
   for(const key of ['order_days','delivery_days'])if(has(key)){
@@ -130,7 +130,7 @@ function settingsFromBody(body){
 }
 // The details of a supplier order email. The email itself is never sent from here: a person
 // sends it from their own mail app and then confirms it, which is what marks it as sent.
-const ORDER_AREAS=['Bar','Kitchen','Barista'];
+const ORDER_AREAS=['Bar','Kitchen','Barista','Cleaning'];
 function orderItemsFromBody(items){
   if(!Array.isArray(items)||!items.length)throw new AdminError('There are no items in this order.');
   if(items.length>300)throw new AdminError('That order has too many items. Split it into smaller orders.');
@@ -416,7 +416,7 @@ async function handleAdmin(request,env,url,user,token){
     const supplierId=cleanText(body.supplier_id,36),supplierName=cleanText(body.supplier_name,120),area=String(body.area||'');
     if(supplierId&&!/^[0-9a-f-]{36}$/i.test(supplierId))throw new AdminError('That supplier couldn’t be found.',404);
     if(!supplierName)throw new AdminError('Choose a supplier for this order.');
-    if(!ORDER_AREAS.includes(area))throw new AdminError('Choose Bar, Kitchen or Barista for this order.');
+    if(!ORDER_AREAS.includes(area))throw new AdminError('Choose Bar, Kitchen, Barista or Cleaning for this order.');
     const params={p_supplier_id:supplierId,p_supplier_name:supplierName,p_area:area,...orderDetailsFromBody(body)};
     return json(await (await asUser(env,token,'/rpc/create_order_request',{method:'POST',body:JSON.stringify(params)})).json(),201);
   }
