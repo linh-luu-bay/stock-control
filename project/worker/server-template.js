@@ -53,7 +53,6 @@ const CONSTRAINT_MESSAGES={
   suppliers_min_order_not_negative:'The minimum order can’t be negative.',
   suppliers_order_days_valid:'Choose order days from Monday to Sunday.',
   suppliers_delivery_days_valid:'Choose delivery days from Monday to Sunday.',
-  suppliers_areas_valid:'Choose areas from Bar, Kitchen, Barista and Cleaning.',
   users_pkey:'An account with that email address already exists.',
   venue_settings_email_format:'Enter a valid venue email address.'
 };
@@ -75,10 +74,10 @@ async function asUser(env,token,path,init={}){
 }
 
 const WEEK_DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const SUPPLIER_AREAS=['Bar','Kitchen','Barista','Cleaning'];
 function cleanText(value,max){const text=String(value??'').trim();return text?text.slice(0,max):null}
 // partial=true validates only the fields sent (edits, archive/restore); false requires a full supplier.
-function supplierFromBody(body,partial){
+// sectionKeys lists every section, archived ones included, so a supplier keeps the areas it already has.
+function supplierFromBody(body,partial,sectionKeys){
   const out={},has=key=>!partial||Object.prototype.hasOwnProperty.call(body,key);
   if(has('name')){const name=cleanText(body.name,120);if(!name)throw new AdminError('Enter the supplier name.');out.name=name}
   for(const key of ['rep_name','phone','account_number'])if(has(key))out[key]=cleanText(body[key],120);
@@ -90,8 +89,8 @@ function supplierFromBody(body,partial){
   }
   if(has('areas')){
     const areas=Array.isArray(body.areas)?body.areas:[];
-    if(areas.some(area=>!SUPPLIER_AREAS.includes(area)))throw new AdminError('Choose areas from Bar, Kitchen, Barista and Cleaning.');
-    out.areas=SUPPLIER_AREAS.filter(area=>areas.includes(area));
+    if(areas.some(area=>!sectionKeys.includes(area)))throw new AdminError('One of those areas no longer exists. Refresh the page and try again.');
+    out.areas=sectionKeys.filter(area=>areas.includes(area));
   }
   for(const key of ['order_days','delivery_days'])if(has(key)){
     const days=Array.isArray(body[key])?body[key]:[];
@@ -138,7 +137,13 @@ function usedSubgroups(data,areaKey,category){return[...new Set((data||[]).filte
 // Until a manager first changes something, the layout is today's built-in list, with the
 // subgroups the items already use.
 function defaultLayout(data){return{areas:LAYOUT_AREAS.map(key=>({key,name:key,categories:DEFAULT_CATEGORIES[key].map(name=>({name,subgroups:usedSubgroups(data,key,name).map(group=>({name:group}))}))}))}}
-function layoutOf(value){return value?.layout&&Array.isArray(value.layout.areas)?value.layout:defaultLayout(value?.data)}
+// A section's `key` is what items, suppliers and orders store, and never changes; `name` is what
+// people see. Sections saved before the switches existed get today's rules: Cleaning can't transfer.
+function withSectionSettings(area){return{...area,canTransfer:typeof area.canTransfer==='boolean'?area.canTransfer:area.key!=='Cleaning',inOrders:area.inOrders!==false}}
+function layoutOf(value){const stored=value?.layout&&Array.isArray(value.layout.areas)?value.layout:defaultLayout(value?.data);return{...stored,areas:stored.areas.map(withSectionSettings)}}
+async function currentLayout(env){return layoutOf((await getAppState(env))?.value)}
+// "none" is reserved: the supplier filter uses it for "No areas set".
+function newSectionKey(layout,name){const taken=new Set(['none',...layout.areas.map(a=>a.key.toLowerCase())]);let key=name,n=2;while(taken.has(key.toLowerCase()))key=`${name} ${n++}`;return key}
 function layoutName(value){return String(value??'').replace(/\s+/g,' ').trim().slice(0,80)}
 function sameName(a,b){return String(a).toLowerCase()===String(b).toLowerCase()}
 // The same item key the change log trigger uses (supabase/migrations/20260924120100_admin_change_log.sql).
@@ -148,9 +153,10 @@ function logItemKey(item){return item.id||`${item.a}|${String(item.n||'').toLowe
 // leaves out so a rename shows as one line rather than one per item.
 function changeLayout(layout,data,body){
   const action=String(body?.action||''),area=layout.areas.find(a=>a.key===body?.area);
-  if(!area)throw new AdminError('That section couldn’t be found.',404);
+  if(!area&&action!=='add-section')throw new AdminError('That section couldn’t be found.',404);
+  if(area?.archived&&action!=='add-section'&&action!=='restore-section')throw new AdminError('Restore that section before changing it.',409);
   const stale=' Someone may have just changed it. Go back to the stock screen and open this page again.';
-  const items=data.filter(x=>x.a===area.key),count=n=>`${n} item${n===1?'':'s'}`;
+  const items=data.filter(x=>x.a===area?.key),count=n=>`${n} item${n===1?'':'s'}`;
   const active=list=>list.filter(x=>!x.archived);
   const findCategory=name=>{const found=area.categories.find(c=>c.name===name);if(!found)throw new AdminError('That category couldn’t be found.'+stale,404);return found};
   const newName=(list,current,what)=>{
@@ -170,6 +176,53 @@ function changeLayout(layout,data,body){
     return{before:at+1,after:to+1};
   };
   const result=(record,logAction,before,after,moved=[])=>({action:logAction,record,before,after,itemIds:moved.map(logItemKey)});
+  if(action.endsWith('-section')){
+    const base={kind:'section'};
+    // Names are unique across every section, archived ones included.
+    const sectionName=current=>{
+      const name=layoutName(body.name).slice(0,40).trim();
+      if(!name)throw new AdminError('Type a name for the section.');
+      if(current&&name===current.name)throw new AdminError('That’s the name it already has.');
+      const clash=layout.areas.find(x=>x!==current&&sameName(x.name,name));
+      if(clash)throw new AdminError(clash.archived?`There’s an archived section called “${clash.name}”. Restore it instead.`:`There’s already a section called “${clash.name}”.`);
+      return name;
+    };
+    if(action==='add-section'){
+      const name=sectionName(null),first=layoutName(body.first_category);
+      if(!first)throw new AdminError('Type a name for the section’s first category.');
+      const key=newSectionKey(layout,name);
+      layout.areas.push({key,name,canTransfer:true,inOrders:true,categories:[{name:first,subgroups:[]}]});
+      return result(key,'insert',null,{...base,a:name,first_category:first});
+    }
+    if(action==='rename-section'){
+      const name=sectionName(area),old=area.name;
+      area.name=name;
+      return result(area.key,'update',{...base,a:old},{...base,a:name});
+    }
+    if(action==='move-section'){
+      const position=move(layout.areas,area,'section');
+      return result(area.key,'update',{...base,a:area.name,position:position.before},{...base,a:area.name,position:position.after});
+    }
+    if(action==='archive-section'){
+      if(active(layout.areas).length===1)throw new AdminError(`${area.name} is the only section left, so it can’t be archived.`);
+      // Its items stay as they are, so Restore puts everything back.
+      area.archived=true;
+      return result(area.key,'archive',{...base,a:area.name,items:items.length},{...base,a:area.name,items:items.length});
+    }
+    if(action==='restore-section'){
+      if(!area.archived)throw new AdminError('That section isn’t archived.');
+      delete area.archived;
+      return result(area.key,'restore',{...base,a:area.name},{...base,a:area.name});
+    }
+    if(action==='switch-section'){
+      const labels={canTransfer:'Can transfer stock',inOrders:'Shows in supplier orders'},setting=String(body.setting||'');
+      if(!Object.hasOwn(labels,setting)||typeof body.value!=='boolean')throw new AdminError('That change isn’t recognised. Refresh the page and try again.');
+      if(area[setting]===body.value)throw new AdminError('That switch is already set that way.'+stale,409);
+      const onOff=value=>value?'On':'Off',old=area[setting];
+      area[setting]=body.value;
+      return result(area.key,'update',{...base,a:area.name,setting:labels[setting],value:onOff(old)},{...base,a:area.name,setting:labels[setting],value:onOff(body.value)});
+    }
+  }
   if(action.endsWith('-category')){
     const base={kind:'category',a:area.name};
     if(action==='add-category'){
@@ -254,7 +307,6 @@ function changeLayout(layout,data,body){
 }
 // The details of a supplier order email. The email itself is never sent from here: a person
 // sends it from their own mail app and then confirms it, which is what marks it as sent.
-const ORDER_AREAS=['Bar','Kitchen','Barista','Cleaning'];
 function orderItemsFromBody(items){
   if(!Array.isArray(items)||!items.length)throw new AdminError('There are no items in this order.');
   if(items.length>300)throw new AdminError('That order has too many items. Split it into smaller orders.');
@@ -343,7 +395,7 @@ function itemsById(list){return new Map((list||[]).map(item=>[item.id,item]))}
 // Recomputes each item's real quantity delta from previous->final data and cross-checks it
 // against what the submitted history events claim, so a client can no longer attach an
 // arbitrary, fabricated history entry to a write, or move stock with no matching record at all.
-function validateEvents(newEvents, previousData, finalData, user){
+function validateEvents(newEvents, previousData, finalData, user, sections){
   const previousMap=itemsById(previousData),finalMap=itemsById(finalData),byItem=new Map();
   for(const event of newEvents){
     const type=event.type;
@@ -356,6 +408,10 @@ function validateEvents(newEvents, previousData, finalData, user){
     if(!allowedRoles.includes(user.role))return`This account is not allowed to record a ${type} entry.`;
     const itemId=event.itemId;
     if(!itemId||!finalMap.has(itemId))return'A stock movement referred to a product that no longer exists.';
+    if(type==='transfer'||type==='transfer_in'){
+      const section=sections.get(finalMap.get(itemId).a);
+      if(section&&(section.archived||!section.canTransfer))return`Stock can’t be transferred to or from ${section.name}. Record it as a delivery or a count correction instead.`;
+    }
     const before=Number(event.before),after=Number(event.after);
     if(!Number.isFinite(before)||!Number.isFinite(after))return'A stock movement is missing valid quantities.';
     const direction=DIRECTION_RULES[type];
@@ -402,6 +458,7 @@ function summarizeQuantityChanges(previousData, finalData){
 
 function secureState(incoming, previous, user){
   const suppliedData=Array.isArray(incoming.data)?incoming.data.map(normaliseItem):[];
+  const sections=new Map(layoutOf(previous).areas.map(a=>[a.key,a]));
   let data;
   if(user.role==='manager')data=suppliedData;
   else{
@@ -419,13 +476,14 @@ function secureState(incoming, previous, user){
     for(const candidate of suppliedData){
       if(data.some(old=>itemKey(old)===itemKey(candidate)))continue;
       const source=data.find(old=>String(old.n||'').trim().toLowerCase()===String(candidate.n||'').trim().toLowerCase());
-      if(source&&['Bar','Kitchen','Barista'].includes(candidate.a))data.push({...source,id:candidate.id||crypto.randomUUID(),a:candidate.a,q:Number(candidate.q)||0});
+      const destination=sections.get(candidate.a);
+      if(source&&destination?.canTransfer&&!destination.archived)data.push({...source,id:candidate.id||crypto.randomUUID(),a:candidate.a,q:Number(candidate.q)||0});
     }
   }
   const oldHistory=Array.isArray(previous.history)?previous.history:[];
   const knownEvents=new Set(oldHistory.map(eventKey));
   const newEvents=(Array.isArray(incoming.history)?incoming.history:[]).filter(event=>!knownEvents.has(eventKey(event))).map(event=>({...event,clientAt:event.clientAt||event.at,at:now(),recordedBy:user.name,recordedByEmail:user.email,unitCost:user.role==='manager'?event.unitCost:null}));
-  const validationError=validateEvents(newEvents,previous.data||[],data,user);
+  const validationError=validateEvents(newEvents,previous.data||[],data,user,sections);
   if(validationError)return{ok:false,error:validationError};
   const history=[...newEvents,...oldHistory];
   const oldStocktakes=Array.isArray(previous.stocktakes)?previous.stocktakes:[];
@@ -508,14 +566,16 @@ async function handleAdmin(request,env,url,user,token){
     return json(await (await asUser(env,token,'/suppliers?select=*&order=name.asc')).json());
   }
   if(path==='/api/admin/suppliers'&&method==='POST'){
-    const supplier=supplierFromBody(await readBody(),false);
+    const sectionKeys=(await currentLayout(env)).areas.map(a=>a.key);
+    const supplier=supplierFromBody(await readBody(),false,sectionKeys);
     const rows=await (await asUser(env,token,'/suppliers',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(supplier)})).json();
     return json(rows[0],201);
   }
   if(path==='/api/admin/suppliers'&&method==='PATCH'){
     const id=url.searchParams.get('id')||'';
     if(!/^[0-9a-f-]{36}$/i.test(id))throw new AdminError('That supplier couldn’t be found.',404);
-    const changes=supplierFromBody(await readBody(),true);
+    const sectionKeys=(await currentLayout(env)).areas.map(a=>a.key);
+    const changes=supplierFromBody(await readBody(),true,sectionKeys);
     if(!Object.keys(changes).length)throw new AdminError('There was nothing to save.');
     const rows=await (await asUser(env,token,`/suppliers?id=eq.${id}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(changes)})).json();
     if(!rows.length)throw new AdminError('That supplier couldn’t be found.',404);
@@ -538,6 +598,11 @@ async function handleAdmin(request,env,url,user,token){
     // one step, retrying if a stock save lands at the same moment. Devices pick it up like any
     // other save (their next save or refresh merges it in).
     const body=await readBody();
+    // Draft orders live on their section's Reorder list, so they'd be stranded if it went away.
+    if(body?.action==='archive-section'||(body?.action==='switch-section'&&body?.setting==='inOrders'&&body?.value===false)){
+      const drafts=await (await asUser(env,token,`/order_requests?select=id&status=eq.draft&area=eq.${encodeURIComponent(String(body.area||''))}&limit=100`)).json();
+      if(drafts.length)throw new AdminError(`This section has ${drafts.length===1?'a draft supplier order':`${drafts.length} draft supplier orders`}. Send or discard ${drafts.length===1?'it':'them'} from its Reorder list first, then try again.`,409);
+    }
     for(let attempt=0;attempt<3;attempt++){
       const row=await getAppState(env);
       if(!row)throw new AdminError('There are no shared stock records yet. Open the stock screen first, then try again.',409);
@@ -563,7 +628,8 @@ async function handleAdmin(request,env,url,user,token){
     const supplierId=cleanText(body.supplier_id,36),supplierName=cleanText(body.supplier_name,120),area=String(body.area||'');
     if(supplierId&&!/^[0-9a-f-]{36}$/i.test(supplierId))throw new AdminError('That supplier couldn’t be found.',404);
     if(!supplierName)throw new AdminError('Choose a supplier for this order.');
-    if(!ORDER_AREAS.includes(area))throw new AdminError('Choose Bar, Kitchen, Barista or Cleaning for this order.');
+    const orderSection=(await currentLayout(env)).areas.find(a=>a.key===area);
+    if(!orderSection||orderSection.archived||!orderSection.inOrders)throw new AdminError('Supplier orders are switched off for this section. Turn on “Shows in supplier orders” in Admin → Categories, then try again.');
     const params={p_supplier_id:supplierId,p_supplier_name:supplierName,p_area:area,...orderDetailsFromBody(body)};
     return json(await (await asUser(env,token,'/rpc/create_order_request',{method:'POST',body:JSON.stringify(params)})).json(),201);
   }
