@@ -16,11 +16,11 @@ The shared frontend is a single HTML page (no router, no URL changes). "Screens"
 │  ├─ "Data backup" ───────────────────► Data backup dialog             [manager only]
 │  └─ "+ Add item" ────────────────────► Add stock item dialog          [manager only]
 │
-├─ Area tabs (persistent, client-side state only)
+├─ Area tabs (persistent, client-side state only; managers add, rename, reorder and archive them in Admin → Categories)
 │  ├─ Bar        (default)
 │  ├─ Kitchen
 │  ├─ Barista
-│  └─ Cleaning   (categories: Bar, Kitchen, Barista; no transfers)
+│  └─ Cleaning   (categories: Bar, Kitchen, Barista; transfers off by default)
 │
 ├─ Stats row (persistent, recalculated per area/filter)
 │  ├─ Items tracked
@@ -72,7 +72,7 @@ The shared frontend is a single HTML page (no router, no URL changes). "Screens"
 - `PUT /api/state` — save shared state; idempotent via `requestId`, returns `409` on conflict.
 - `GET /api/users`, `POST /api/users` — staff account list/create/update.
 - `GET /api/recovery`, `GET /api/recovery?id=` — list and download server-side recovery snapshots.
-- `POST /api/admin/layout` — Admin → Categories (managers): one change per request (add, rename, move up/down, archive with "move items to", restore a category or subgroup). Updates the layout and the affected items together and returns the new `layout` and revision.
+- `POST /api/admin/layout` — Admin → Categories (managers): one change per request (add, rename, move up/down, archive with "move items to", restore a category or subgroup; add, rename, move, archive, restore or switch a section). Updates the layout and the affected items together and returns the new `layout` and revision.
 
 ## Not part of this sitemap
 
