@@ -61,8 +61,8 @@ The shared frontend is a single HTML page (no router, no URL changes). "Screens"
 | Weekly stock history | "History" | supervisor, manager | Per-week movement/audit log; download CSV |
 | Record stock movement | "Record movement" | all | Log delivery / wastage / transfer / staff meal / correction against one product |
 | Start stocktake | "Start stocktake" | all | Physical count entry per area, with draft autosave and variance-reason enforcement |
-| Add stock item | "+ Add item" | manager | Create a new product with unit, targets, supplier, pack size, portion info |
-| Edit stock item | row "Edit item" | manager | Edit an existing product's metadata (not its on-hand quantity), including moving it to another section |
+| Add stock item | "+ Add item" | manager | Create a new product with unit, targets, supplier, pack size, portion info and optional unit cost |
+| Edit stock item | row "Edit item" | manager | Edit an existing product's metadata (not its on-hand quantity), including its unit cost and moving it to another section |
 | Staff accounts | header "Accounts" | manager | List/add/update staff (name, email, role, active status) via `/api/users` |
 | Data backup | "Data backup" | manager | Download/import JSON backups; manager also gets "Download recovery point" (`/api/recovery`) |
 
