@@ -59,6 +59,7 @@ The shared frontend is a single HTML page (no router, no URL changes). "Screens"
 | Resolve save conflict | Banner / footer "Resolve conflict" when automatic merging can't finish | any | Compare local vs. shared quantities after a 409; download, recheck, or discard local changes |
 | Reorder list | "Reorder list" | supervisor, manager | Generated supplier-grouped reorder text; copy or download CSV |
 | Weekly stock history | "History" | supervisor, manager | Per-week movement/audit log; download CSV |
+| Stock report | Admin → "Stock report" | manager | Table of every item's quantity, unit cost and value, with filters for gaps, per-item movements, editable unit cost and CSV download |
 | Record stock movement | "Record movement" | all | Log delivery / wastage / transfer / staff meal / correction against one product |
 | Start stocktake | "Start stocktake" | all | Physical count entry per area, with draft autosave and variance-reason enforcement |
 | Add stock item | "+ Add item" | manager | Create a new product with unit, targets, supplier, pack size, portion info and optional unit cost |
