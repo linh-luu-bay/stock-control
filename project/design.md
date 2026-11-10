@@ -39,6 +39,7 @@ Status colours outside the token set: `#31966a` (on-target dot / positive histor
 - **Dialogs** (native `<dialog>`): 16px radius, no border, heavy drop shadow, dark 60%-opacity backdrop. Shared anatomy: `.modal-head` (title + `×` close), `.modal-body`, `.modal-actions` (right-aligned button row, primary action last).
 - **Forms**: `.form-grid` is a responsive 2-column grid (`.field.full` spans both); every field stacks a bold 14px label over a full-width input/select/textarea with 9px radius.
 - **Info banners**: `.movement-help` (light grey, muted text) for contextual instructions; `.staff-banner` (same grey, bold key facts) for "who/what" context in stocktake and movement flows.
+- **Light-up**: boxes and rows show a gold outline or tint (`--lit`, `--lit-strong`) under the mouse or keyboard. Touch screens have no pointer, so the last-tapped one stays lit. To include a new kind of box or row, add it to the light-up CSS and the `LIGHT_UP` list in the script.
 - **Inactive/disabled state**: discontinued items render at `opacity:.62` (`.inactive-item`) and their status column always reads "Discontinued" regardless of stock level.
 
 ## Responsive behaviour
