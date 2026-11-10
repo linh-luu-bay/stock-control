@@ -46,7 +46,9 @@ Roles referenced throughout: **staff** (count/record only), **supervisor** (staf
 
 ## 7. Add or edit a stock item (manager only)
 
-**Add**: "+ Add item" → fill name, category (scoped to current area), unit, default PAR + optional Day/Evening/Event overrides, count method, supplier, location, order-pack size/name, and (for portion-based units) portion weight/volume. Validation blocks cans with a pack size of 1. New item starts at zero on-hand stock.
+**Add**: "+ Add item" → fill name, category (scoped to current area), unit, default PAR + optional Day/Evening/Event overrides, count method, supplier, location, order-pack size/name, optional unit cost, and (for portion-based units) portion weight/volume. Validation blocks cans with a pack size of 1. New item starts at zero on-hand stock.
+
+**Unit cost** (managers only): what the venue pays a supplier for one stock unit. It shows on each stock row, where a manager can tap it to change it, and in Add/Edit item. It also updates when a delivery is recorded with a cost. A blank cost shows as "Not set" and is left out of the stock value box, as are items with no count. History says only "unit cost updated", because staff can read History; the amounts are in the Admin change log.
 
 **Edit**: row → "Edit item" opens the same shape pre-filled, plus an active/discontinued status field and a Section list. Choosing another section moves the whole item, with its count and PAR levels, and is refused if that section already has an item with the same name; on-hand quantity itself is explicitly not editable here. Saving diffs every field against the previous values and writes a single `par_change` (if the PAR/target changed) or `item_update` history entry summarising what changed, in prose.
 
