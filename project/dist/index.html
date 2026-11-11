@@ -797,7 +797,7 @@ async function loadSettings(){
 $('#settings-form').onsubmit=async e=>{
   e.preventDefault();
   let showError=message=>{$('#settings-error').textContent=message},body=Object.fromEntries(Object.entries(SETTINGS_FIELDS).map(([key,id])=>[key,$(id).value.trim()]));
-  if(body.venue_email&&!/^[^@s]+@[^@s]+.[^@s]+$/.test(body.venue_email)){showError('Enter a valid venue email, for example admin@baybellerive.com.au.');$('#settings-email').focus();return}
+  if(body.venue_email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.venue_email)){showError('Enter a valid venue email, for example admin@baybellerive.com.au.');$('#settings-email').focus();return}
   showError('');let button=$('#settings-save');button.disabled=true;
   try{
     let response=await adminSend('/api/admin/settings','PATCH',body);
