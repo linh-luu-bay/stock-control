@@ -11,41 +11,50 @@ The shared frontend is a single HTML page. It has two views: the **Stock overvie
 │  ├─ "Sign out"
 │  └─ Today's date
 │
-├─ Toolbar (persistent, above tabs)
+├─ Save banner (top of page, only when needed)
+│  ├─ Red while a save problem lasts (offline, failed, conflict), with "Retry save" or "Resolve conflict"
+│  └─ Green "Saved to shared records" for 3 seconds after a save
+│
+├─ Toolbar (above the tabs)
 │  ├─ "Start stocktake" ──────────────► Start stocktake dialog          [all roles]
 │  ├─ "Record movement" ──────────────► Record stock movement dialog   [all roles]
 │  ├─ "Data backup" ───────────────────► Data backup dialog             [manager only]
+│  ├─ "Import CSV" ────────────────────► Import items from CSV dialog   [manager only]
 │  └─ "+ Add item" ────────────────────► Add stock item dialog          [manager only]
 │
-├─ Area tabs (persistent, client-side state only; managers add, rename, reorder and archive them in Admin → Categories)
-│  ├─ Bar        (default)
-│  ├─ Kitchen
-│  ├─ Barista
-│  └─ Cleaning   (categories: Bar, Kitchen, Barista; transfers off by default)
+├─ Section tabs (one per active section, in the order set in Admin → Categories)
+│  └─ Today: Bar (default), Kitchen, Barista, Cleaning (transfers off by default)
 │
-├─ Stats row (persistent, recalculated per area/filter)
+├─ Stats row (recalculated per section, category filter and search)
 │  ├─ Items tracked
-│  ├─ Below target
-│  └─ Order packs needed
+│  ├─ Below target (items with no count or no PAR are left out)
+│  ├─ Order packs needed
+│  └─ Stock value, from items with both a count and a unit cost      [manager only]
 │
-├─ Stock panel (persistent, per selected area)
-│  ├─ Heading — "<Area> stock"
-│  ├─ Target selector — Default / Day / Evening / Event
+├─ Stock panel (per selected section)
+│  ├─ Heading — "<Section> stock"
+│  ├─ Category filter
+│  ├─ Target selector — Default target / Day service / Evening service / Event
 │  ├─ Search box
 │  ├─ "History" button ────────────────► Weekly stock history dialog   [hidden for staff]
 │  ├─ "Show discontinued" toggle                                       [manager only]
 │  ├─ "Reorder list" button ───────────► Reorder list dialog           [hidden for staff]
-│  └─ Item table, grouped by category (order and names set in Admin → Categories)
+│  └─ Item table, grouped by category and then subgroup (tap a heading to collapse it)
+│     ├─ Columns: Item, On hand, Target / par level, Count method, Status
+│     │  (Status: On target, Reorder <packs>, Not counted, PAR not set, Discontinued)
 │     └─ per-row actions (inline, not dialogs):
 │        ├─ Photo button → file picker (camera capture)                [manager only]
 │        ├─ Remove photo                                               [manager only]
 │        ├─ Change supplier (prompt())                                 [manager only]
-│        ├─ Change order pack (prompt())                                [manager only]
-│        ├─ Change portion size (prompt(), portions unit only)          [manager only]
-│        ├─ "Edit item" ───────────────► Edit stock item dialog          [manager only]
-│        └─ On-hand quantity input (inline edit)                       [disabled for staff]
+│        ├─ Change order pack (prompt())                               [manager only]
+│        ├─ Change portion size (prompt(), portions unit only)         [manager only]
+│        ├─ "Unit cost: …" (prompt())                                  [manager only]
+│        ├─ "Edit item" ───────────────► Edit stock item dialog         [manager only]
+│        └─ On-hand quantity box ──────► Confirm count dialog           [supervisor, manager]
 │
-└─ Footer (persistent — sync/status bar, not navigation)
+├─ "↑ Top" button (after scrolling down)
+│
+└─ Footer (sync/status bar, not navigation)
    ├─ Live sync status text
    ├─ "Retry save"
    ├─ "Download unsaved work"
@@ -99,19 +108,24 @@ The shared frontend is a single HTML page. It has two views: the **Stock overvie
 |---|---|---|---|
 | Choose which numbers to keep | Opens by itself after a 409 when someone else changed the count of the same item; also from "Resolve conflict" | any | Pick "Someone else" or "You" for each clashing count; everything else merges automatically |
 | Resolve save conflict | Banner / footer "Resolve conflict" when automatic merging can't finish | any | Compare local vs. shared quantities after a 409; download, recheck, or discard local changes |
-| Reorder list | "Reorder list" | supervisor, manager | Generated supplier-grouped reorder text; copy or download CSV |
+| Reorder list | "Reorder list" | supervisor, manager | Generated supplier-grouped reorder text; copy or download CSV. Managers also get "Email supplier orders" (one row per supplier) when the section has "Shows in supplier orders" on |
+| Order email | Reorder list → "Email order" / "Continue draft" | manager | Delivery date, window and notes; editable subject and email; "Copy email", "Open in email app", "Mark as sent", "Discard draft". Nothing is emailed by the app |
 | Weekly stock history | "History" | supervisor, manager | Per-week movement/audit log; download CSV |
 | Record stock movement | "Record movement" | all | Log delivery / wastage / transfer / staff meal / correction against one product |
+| Confirm count | typing in a row's on-hand box | supervisor, manager | Confirms the change ("from 4 bottles to 6 bottles?", or "Mark as Not counted?") with an optional reason |
 | Start stocktake | "Start stocktake" | all | Physical count entry per area, with draft autosave and variance-reason enforcement |
-| Add stock item | "+ Add item" | manager | Create a new product with unit, targets, supplier, pack size, portion info and optional unit cost |
-| Edit stock item | row "Edit item" | manager | Edit an existing product's metadata (not its on-hand quantity), including its unit cost and moving it to another section |
+| Add stock item | "+ Add item" | manager | Create a new product with category, optional subgroup, unit, targets, supplier (from Admin → Suppliers, or typed), pack size, portion info and optional unit cost |
+| Edit stock item | row "Edit item" | manager | Edit an existing product's details (not its on-hand quantity), including its unit cost, status and moving it to another section |
+| Import items from CSV | "Import CSV" | manager | Download a template, choose a CSV, preview each row's issues, then import into the current section |
 | Add / Edit supplier | Admin → Suppliers: "+ Add supplier" or row "Edit" | manager | Name, rep, phone, ordering email, account number, notes, areas, order days, order cut-off, delivery days, minimum order; "Archive supplier" / "Restore supplier" when editing |
 | Category / section | Admin → Categories: "+ Add section", or Rename / Archive under ⋯ | manager | Add a section (with its first category); rename a section, category or subgroup; archive one, choosing where its items move to |
 | Data backup | "Data backup" | manager | Download/import JSON backups; manager also gets "Download recovery point" (`/api/recovery`) |
 
 ## Backend endpoints the page depends on
 
-- `GET /api/bootstrap` — initial user identity, revision, shared state (`data`, `history`, `stocktakes`) and `layout` (each area's categories and subgroups, in order; archived ones are flagged).
+Every `/api/*` call goes through `apiFetch()`, which sends the signed-in user's Supabase access token (refreshing it once on a `401`).
+
+- `GET /api/bootstrap` — `403` if the signed-in email isn't an active account in `users`; otherwise the initial user identity, revision, shared state (`data`, `history`, `stocktakes`) and `layout` (each area's categories and subgroups, in order; archived ones are flagged).
 - `PUT /api/state` — save shared state; idempotent via `requestId`, returns `409` on conflict.
 - `GET /api/recovery`, `GET /api/recovery?id=` — list and download server-side recovery snapshots.
 
@@ -126,4 +140,5 @@ Admin routes. Every `/api/admin/*` route and `/api/users` returns `403` ("Only m
 
 ## Not part of this sitemap
 
-- `Bay-Bellerive-Local-Trial.html` is a separate standalone build (no `/api/*` calls, browser-storage only) with its own extra kitchen features — not reflected here since it is not yet merged into `dist/index.html`.
+- The sign-in card ("Log in with Google") and the "You don't have access" and "Stock records unavailable" messages replace the whole page; see `userflow.md` section 1.
+- `Bay-Bellerive-Local-Trial.html` (repo root) is a separate standalone build (no `/api/*` calls, browser-storage only) with its own extra kitchen features — not reflected here since it is not merged into `dist/index.html`.
