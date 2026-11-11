@@ -1,6 +1,6 @@
 # User flows — `dist/index.html`
 
-Roles referenced throughout: **staff** (count/record only), **supervisor** (staff abilities + history/reorder), **manager** (everything, including product/account/backup admin). Role comes from `/api/bootstrap` and is not client-editable.
+Roles referenced throughout: **staff** (count/record only), **supervisor** (staff abilities + history/reorder), **manager** (everything, including products, backups and the Admin page; see section 8). Role comes from `/api/bootstrap` and is not client-editable.
 
 ## 1. Load and sign in
 
@@ -52,10 +52,52 @@ Roles referenced throughout: **staff** (count/record only), **supervisor** (staf
 
 **Edit**: row → "Edit item" opens the same shape pre-filled, plus an active/discontinued status field and a Section list. Choosing another section moves the whole item, with its count and PAR levels, and is refused if that section already has an item with the same name; on-hand quantity itself is explicitly not editable here. Saving diffs every field against the previous values and writes a single `par_change` (if the PAR/target changed) or `item_update` history entry summarising what changed, in prose.
 
-## 8. Manage staff accounts (manager only)
+## 8. Admin page (manager only)
 
-1. Header "Accounts" → `GET /api/users` populates the table.
-2. Form adds or updates an account by name, email, role (staff/supervisor/manager), and active/disabled status via `POST /api/users`; the backend is the source of truth for who may sign in at all (no self-enrolment).
+### 8.1 Open and move around Admin
+
+1. A manager taps **Admin** in the header. The stock view is swapped for the Admin page and the address changes to `#admin/<tab>`. It reopens on the tab used last in this visit, or **Suppliers** the first time.
+2. Tabs: **Suppliers**, **Staff accounts**, **Categories**, **Change log**, **Settings**. Each tab loads its data fresh when opened. The browser Back button moves between tabs, and **← Back to stock** returns to the stock view.
+3. A supervisor or staff member who opens an `#admin` address is sent back to the stock view. The Admin button is hidden for them, and the server refuses every admin request from anyone but a manager.
+4. After each action a message line under the tabs confirms what happened ("Fresh Produce Co has been added.") or explains what went wrong. Success messages fade after 6 seconds; errors stay.
+
+### 8.2 Suppliers
+
+1. The list shows active suppliers by default. **Search** matches name, rep, phone, ordering email, account number and notes. The area filter shows one section's suppliers, and the status filter switches between Active, Archived and All suppliers.
+2. **+ Add supplier** or a row's **Edit** opens the supplier dialog: name (required), rep name, phone, ordering email, account number, notes, areas (sections that take supplier orders), order days, order cut-off time, delivery days and minimum order (AUD).
+3. On save, the form is checked: a name is required, names must be unique (archived suppliers count), the email must look like an email, and the minimum order must be $0 or more. Errors show in the dialog and nothing is saved.
+4. **Archive** (row or dialog) asks for confirmation, then moves the supplier to the Archived list. Nothing is deleted. **Restore** brings it back.
+5. A supplier's order days, delivery days, minimum order and email are used by supplier order emails from the Reorder list.
+
+### 8.3 Staff accounts
+
+1. The table lists every account: name ("Awaiting sign-in" until they first sign in), email, access level and status.
+2. **Add a staff member**: enter name, email address, access level (Staff, Supervisor, Manager) and status, then **Add account**. Giving someone manager access asks for confirmation first. The confirmation says they can then sign in with Google using that email. Only emails in this list can sign in; there is no self-sign-up.
+3. **Edit** on a row fills the same form (the email can't be changed) and the button becomes **Save changes**. Changing the access level or deactivating an account asks for confirmation first. **New member** clears the form.
+4. Accounts are deactivated, never deleted. A manager can't deactivate their own account or remove their own manager access.
+
+### 8.4 Categories (sections, categories and subgroups)
+
+1. A row of section tabs picks which section to edit. The section's card shows its item count, **← →** to change the tab order on the stock screen, and **⋯** for **Rename** and **Archive**.
+2. Two switches on the card: **Can transfer stock** (whether stock can move to and from this section) and **Shows in supplier orders** (whether suppliers can be tagged with it and orders emailed from it). Turning the second off, or archiving the section, is refused while it has draft supplier orders. Send or discard them from its Reorder list first.
+3. **+ Add section** asks for the section name and its first category. It appears as a new tab for everyone.
+4. Categories are listed in the order staff see them, each with its item count. **↑ ↓** move a category; **⋯** opens Rename or Archive; **Add category** adds one at the end.
+5. Tap a category (or **▸**) to see its subgroups, which have the same move, rename, archive and restore controls, plus an **Add subgroup** box. **Expand all** / **Collapse all** opens or closes every category.
+6. **Rename** keeps all items, counts and PAR levels and moves them to the new name. **Archive** hides the category, subgroup or section from the stock screens. If a category or subgroup still has items, the dialog asks where to move them first. A section's items are hidden with it, not moved. The last active category in a section, and the last active section, can't be archived.
+7. Archived sections, categories and subgroups are listed under **Archived (n)** with a **Restore** button.
+8. Every change is saved on its own, together with the items it affects. Other devices pick it up the next time they save or refresh.
+
+### 8.5 Change log
+
+1. Shows changes to stock item details, counts typed straight into a quantity box, count corrections, categories and sections, suppliers, staff accounts, supplier orders and settings. Deliveries, wastage, transfers and stocktakes are in History instead. Entries are recorded automatically and can't be edited or deleted.
+2. Each entry shows the time (Hobart, DD/MM/YYYY), a plain-English summary ("Sam changed Gin par level 4 → 6") and which section it belongs to. Tapping it opens a Detail / Before / After table, with **Show raw data** for the full record.
+3. Filters: **From** and **To** dates (shown as DD/MM/YYYY on every device; tapping opens the device's date picker), **Person**, **Section** and **Type of change** (Added, Edited, Archived/discontinued/deactivated, Restored/reactivated, Deleted). Each filter change reloads the list. A From date after the To date is refused with a message. **Clear filters** resets them all.
+4. The newest 100 entries load first. **Show older changes** loads the next 100.
+
+### 8.6 Settings
+
+1. Venue delivery address, venue phone, venue email, sender name and sender role are saved once and used in every supplier order email. The delivery address appears in each order; the email signature comes from the manager's own email app.
+2. **Save settings** checks the venue email looks valid, saves, and confirms "Settings have been saved."
 
 ## 9. Back up, import, and recover data (manager only)
 
