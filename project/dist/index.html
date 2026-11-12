@@ -97,7 +97,7 @@ function renderSignIn(message){
   document.body.innerHTML=`<main class="shell" style="min-height:100vh;display:flex;align-items:center;justify-content:center"><section class="card" style="max-width:360px;width:100%;text-align:center"><h1 style="margin-bottom:6px">Bay Bellerive Stock</h1><p class="sub" id="signin-status">${message?escapeHtmlStandalone(message):'Sign in with a Google account added by your manager.'}</p><button class="btn primary" id="google-signin" style="width:100%;margin-top:16px">Log in with Google</button></section></main>`;
   document.querySelector('#google-signin').onclick=()=>{
     const redirectTo=location.origin+'/';
-    location.href=`${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
+    location.href=`${SUPABASE_URL}/auth/v1/authorize?provider=google&prompt=select_account&redirect_to=${encodeURIComponent(redirectTo)}`;
   };
 }
 async function apiFetch(path,init={}){
