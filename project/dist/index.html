@@ -44,7 +44,7 @@
 <dialog id="supplier-dialog"><div class="modal-head"><h2 id="supplier-title">Add supplier</h2><button class="close" id="close-supplier" aria-label="Close supplier form">×</button></div><form class="modal-body" id="supplier-form" novalidate><p class="supplier-status-note" id="supplier-status-note"></p><div class="form-grid"><div class="field full"><label for="supplier-name">Supplier name <span class="required">(required)</span></label><input id="supplier-name" maxlength="120" autocomplete="off"></div><div class="field"><label for="supplier-rep">Rep name</label><input id="supplier-rep" maxlength="120" autocomplete="off"></div><div class="field"><label for="supplier-phone">Phone</label><input id="supplier-phone" type="tel" maxlength="120" autocomplete="off"></div><div class="field"><label for="supplier-email">Ordering email</label><input id="supplier-email" type="email" maxlength="200" autocomplete="off" placeholder="orders@supplier.com.au"></div><div class="field"><label for="supplier-account">Our account number with them</label><input id="supplier-account" maxlength="120" autocomplete="off"></div><fieldset class="field full"><legend>Areas</legend><div class="day-picker" id="supplier-areas"></div><small class="muted">Tick every area they supply. Leave all unticked to show them in every area.</small></fieldset><fieldset class="field full"><legend>Order days</legend><div class="day-picker" id="supplier-order-days"><label class="day-chip"><input type="checkbox" value="Mon">Mon</label><label class="day-chip"><input type="checkbox" value="Tue">Tue</label><label class="day-chip"><input type="checkbox" value="Wed">Wed</label><label class="day-chip"><input type="checkbox" value="Thu">Thu</label><label class="day-chip"><input type="checkbox" value="Fri">Fri</label><label class="day-chip"><input type="checkbox" value="Sat">Sat</label><label class="day-chip"><input type="checkbox" value="Sun">Sun</label></div></fieldset><div class="field"><label for="supplier-cutoff">Order cut-off time</label><input id="supplier-cutoff" type="time"></div><div class="field"><label for="supplier-min">Minimum order (AUD)</label><div class="money-input"><span>$</span><input id="supplier-min" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div><fieldset class="field full"><legend>Delivery days</legend><div class="day-picker" id="supplier-delivery-days"><label class="day-chip"><input type="checkbox" value="Mon">Mon</label><label class="day-chip"><input type="checkbox" value="Tue">Tue</label><label class="day-chip"><input type="checkbox" value="Wed">Wed</label><label class="day-chip"><input type="checkbox" value="Thu">Thu</label><label class="day-chip"><input type="checkbox" value="Fri">Fri</label><label class="day-chip"><input type="checkbox" value="Sat">Sat</label><label class="day-chip"><input type="checkbox" value="Sun">Sun</label></div></fieldset><div class="field full"><label for="supplier-notes">Notes</label><textarea id="supplier-notes" maxlength="2000"></textarea></div></div><div class="modal-actions"><span class="form-error" id="supplier-error" role="alert"></span><button type="button" class="btn" id="supplier-archive" hidden>Archive supplier</button><button type="button" class="btn" id="cancel-supplier">Cancel</button><button class="btn primary" id="supplier-save" type="submit">Save supplier</button></div></form></dialog>
 <dialog id="layout-dialog"><div class="modal-head"><h2 id="layout-dialog-title">Rename category</h2><button class="close" id="close-layout" type="button" aria-label="Close">×</button></div><form class="modal-body" id="layout-form" novalidate><p class="sub" id="layout-dialog-note"></p><div class="form-grid"><div class="field full" id="layout-name-field"><label for="layout-name">New name</label><input id="layout-name" maxlength="80" autocomplete="off"></div><div class="field full" id="layout-first-field" hidden><label for="layout-first">First category</label><input id="layout-first" maxlength="80" autocomplete="off" placeholder="For example, General"></div><div class="field full" id="layout-to-field"><label for="layout-to">Move its items to</label><select id="layout-to"></select></div></div><div class="modal-actions"><span class="form-error" id="layout-error" role="alert"></span><button type="button" class="btn" id="cancel-layout">Cancel</button><button class="btn primary" id="layout-submit" type="submit">Save</button></div></form></dialog>
 <dialog id="backup-dialog"><div class="modal-head"><h2>Data backup</h2><button class="close" id="close-backup" aria-label="Close data backup">×</button></div><div class="modal-body"><div class="movement-help">Download a backup from the original app, then import it into the private website. Importing merges the lists, so products already entered in either version are retained.</div><div class="staff-banner"><span>Products on this device</span><b id="backup-item-count">0</b></div><div class="modal-actions"><span class="copy-note" id="backup-status" role="status"></span><button class="btn" id="download-backup">Download backup</button><button class="btn primary" id="import-backup">Import and merge backup</button></div></div></dialog>
-<dialog id="import-dialog"><div class="modal-head"><h2>Import items from CSV</h2><button class="close" id="close-import" aria-label="Close CSV import">×</button></div><div class="modal-body"><div class="movement-help">Imports new products into the <b id="import-area-name"></b> area. Download the template, fill in one row per product, then choose the file below. Existing products are matched by name and updated; new names are added.</div><div class="modal-actions" style="margin-top:12px"><button type="button" class="btn" id="download-import-template">Download CSV template</button><button type="button" class="btn" id="choose-import-file">Choose CSV file</button></div><div class="copy-note" id="import-status" role="status" style="display:block;margin-top:10px"></div><div class="history-scroll" id="import-preview-wrap" hidden style="margin-top:10px"><table class="stocktake-table"><thead><tr><th>Row</th><th>Name</th><th>Category</th><th>Subgroup</th><th>Issue</th></tr></thead><tbody id="import-preview-rows"></tbody></table></div><div class="modal-actions"><button type="button" class="btn" id="cancel-import">Cancel</button><button type="button" class="btn primary" id="confirm-import" disabled>Import items</button></div></div></dialog>
+<dialog id="import-dialog"><div class="modal-head"><h2>Import items from CSV</h2><button class="close" id="close-import" aria-label="Close CSV import">×</button></div><div class="modal-body"><div class="movement-help">Adds new products to the <b id="import-area-name"></b> area. Download the template, fill in one row per product, then choose the file below. Name and Category are required. Products that already exist are skipped unless you tick the box below. When a product is updated, only the cells you fill in change. Blank cells keep its current details.</div><label class="toggle-label" style="margin-top:12px;white-space:normal;font-size:14px"><input type="checkbox" id="import-update-existing"> Also update products that already exist</label><div class="modal-actions" style="margin-top:12px"><button type="button" class="btn" id="download-import-template">Download CSV template</button><button type="button" class="btn" id="choose-import-file">Choose CSV file</button></div><div class="copy-note" id="import-status" role="status" style="display:block;margin-top:10px"></div><div class="history-scroll" id="import-preview-wrap" hidden style="margin-top:10px"><table class="stocktake-table"><thead><tr><th>Row</th><th>Name</th><th>Category</th><th>Action</th><th>Details</th></tr></thead><tbody id="import-preview-rows"></tbody></table></div><div class="modal-actions"><button type="button" class="btn" id="cancel-import">Cancel</button><button type="button" class="btn primary" id="confirm-import" disabled>Import items</button></div></div></dialog>
 <input id="backup-upload" type="file" accept="application/json,.json" hidden>
 <input id="import-csv-upload" type="file" accept="text/csv,.csv" hidden>
 <input id="photo-upload" type="file" accept="image/*" capture="environment" hidden>
@@ -355,11 +355,41 @@ const IMPORT_COLUMNS=['Name','Category','Subgroup','Stock unit','Default target'
 function parseCsv(text){let rows=[],row=[],field='',inQuotes=false;text=text.replace(/\r\n/g,'\n');for(let i=0;i<text.length;i++){let ch=text[i];if(inQuotes){if(ch==='"'){if(text[i+1]==='"'){field+='"';i++}else inQuotes=false}else field+=ch}else if(ch==='"')inQuotes=true;else if(ch===','){row.push(field);field=''}else if(ch==='\n'){row.push(field);rows.push(row);row=[];field=''}else field+=ch}row.push(field);rows.push(row);return rows.filter(r=>r.length>1||r[0]!=='')}
 function csvField(value){value=String(value??'');return /[",\n]/.test(value)?'"'+value.replace(/"/g,'""')+'"':value}
 function downloadCsv(filename,rows){let csv=rows.map(r=>r.map(csvField).join(',')).join('\r\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=filename;link.click();URL.revokeObjectURL(link.href)}
-let pendingImportRows=[];
+// CSV import. Blank cells mean "keep what's there" for an existing product, and existing products are only touched when the manager ticks the box.
+let pendingImportRows=[],parsedImportRows=[];
+const IMPORT_DEFAULTS={group:'',u:'units',t:null,m:'Whole count',s:'Unassigned supplier',location:'Not set',p:1,pl:'unit'};
+const IMPORT_LABELS={c:'category',group:'subgroup',u:'stock unit',t:'target',m:'count method',s:'supplier',location:'storage location',p:'items per pack',pl:'pack name'};
+function importValue(key,v){return key==='t'&&v==null?'Not set':(v==null||v===''?'(blank)':String(v))}
+function findImportMatch(name){let key=name.trim().toLowerCase();return data.find(x=>x.a===area&&String(x.n||'').trim().toLowerCase()===key)}
+function planImportRow(r,updateExisting){
+  if(r.problem)return{action:'skip',text:r.problem};
+  let existing=findImportMatch(r.name),notes=r.issues.length?` Note: ${r.issues.join('; ')}.`:'';
+  if(!existing)return{action:'add',text:'Add as a new product.'+notes};
+  if(existing.active===false)return{action:'skip',text:'A discontinued product has this name, so the row was skipped. Bring it back on its edit screen first.'};
+  if(!updateExisting)return{action:'skip',text:'Already exists, so the row was skipped. Tick “Also update products that already exist” to update it.'};
+  let changes=[],warnings=[];
+  Object.keys(r.fields).forEach(k=>{let before=existing[k],after=r.fields[k];if(String(before??'')===String(after??''))return;
+    changes.push(`${IMPORT_LABELS[k]} ${importValue(k,before)} → ${importValue(k,after)}`);
+    if((k==='s'&&after==='Unassigned supplier')||(k==='location'&&after==='Not set'))warnings.push(`${IMPORT_LABELS[k]} will change to “${after}”`)});
+  if(!changes.length)return{action:'none',text:'Already up to date. Nothing to change.'+notes};
+  return{action:'update',existing,warn:warnings.length>0,text:`Update: ${changes.join('; ')}.`+(warnings.length?` Check: ${warnings.join('; ')}.`:'')+notes};
+}
+function renderImportPreview(){
+  let updateExisting=$('#import-update-existing').checked,counts={add:0,update:0,skip:0,none:0},labels={add:'Add',update:'Update',skip:'Skip',none:'No change'};
+  pendingImportRows=[];
+  let html=parsedImportRows.map(r=>{let plan=planImportRow(r,updateExisting);counts[plan.action]++;if(plan.action==='add'||plan.action==='update')pendingImportRows.push(r);
+    return `<tr><td>${r.rowNum}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.category)}</td><td><b>${labels[plan.action]}</b></td><td${plan.warn?' style="color:var(--red)"':''}>${escapeHtml(plan.text)}</td></tr>`}).join('');
+  $('#import-preview-rows').innerHTML=html||'<tr><td colspan="5" class="empty">No data rows found</td></tr>';
+  $('#import-preview-wrap').hidden=false;
+  $('#import-status').style.color='';
+  $('#import-status').textContent=`${counts.add} to add, ${counts.update} to update, ${counts.skip} skipped`+(counts.none?`, ${counts.none} already up to date`:'')+'.';
+  $('#confirm-import').disabled=!pendingImportRows.length;
+}
 $('#import-button').hidden=currentUser.role!=='manager';
-$('#import-button').onclick=()=>{if(currentUser.role!=='manager')return;$('#import-area-name').textContent=sectionName(area);$('#import-status').textContent='';$('#import-preview-wrap').hidden=true;$('#import-preview-rows').innerHTML='';$('#confirm-import').disabled=true;pendingImportRows=[];$('#import-dialog').showModal()};
+$('#import-button').onclick=()=>{if(currentUser.role!=='manager')return;$('#import-area-name').textContent=sectionName(area);$('#import-status').textContent='';$('#import-preview-wrap').hidden=true;$('#import-preview-rows').innerHTML='';$('#import-update-existing').checked=false;$('#confirm-import').disabled=true;pendingImportRows=[];parsedImportRows=[];$('#import-dialog').showModal()};
 $('#close-import').onclick=()=>$('#import-dialog').close();$('#cancel-import').onclick=()=>$('#import-dialog').close();
-$('#download-import-template').onclick=()=>{let example=categories[area][0];downloadCsv(`bay-bellerive-${area.toLowerCase()}-import-template.csv`,[IMPORT_COLUMNS,[`Example ${sectionName(area)} item`,example,'','units','10','Whole count','Unassigned supplier','Not set','1','unit']])};
+$('#import-update-existing').onchange=()=>{if(parsedImportRows.length)renderImportPreview()};
+$('#download-import-template').onclick=()=>{let example=categories[area][0];downloadCsv(`bay-bellerive-${area.toLowerCase()}-import-template.csv`,[IMPORT_COLUMNS,[`Example ${sectionName(area)} item`,example,'','','','','','','','']])};
 $('#choose-import-file').onclick=()=>{$('#import-csv-upload').value='';$('#import-csv-upload').click()};
 $('#import-csv-upload').onchange=async()=>{
   let file=$('#import-csv-upload').files[0];if(!file)return;
@@ -369,47 +399,43 @@ $('#import-csv-upload').onchange=async()=>{
   let col=name=>header.indexOf(name.toLowerCase());
   let idx={n:col('Name'),c:col('Category'),group:col('Subgroup'),u:col('Stock unit'),t:col('Default target'),m:col('Count method'),s:col('Supplier'),location:col('Storage location'),p:col('Items per pack'),pl:col('Pack name')};
   if(idx.n<0||idx.c<0){$('#import-status').textContent='The CSV must include "Name" and "Category" columns. Download the template to see the expected format.';$('#import-status').style.color='var(--red)';return}
-  let validMethods={'whole count':'Whole count','weight':'Weight','visual':'Visual'};
-  let preview=[],valid=[];
+  let validMethods={'whole count':'Whole count','weight':'Weight','visual':'Visual'},seen={};
+  parsedImportRows=[];
   body.forEach((row,i)=>{
     if(row.every(v=>v.trim()===''))return;
-    let rowNum=i+2,name=(row[idx.n]||'').trim(),categoryRaw=(row[idx.c]||'').trim();
+    let rowNum=i+2,cell=k=>idx[k]>=0?(row[idx[k]]||'').trim():'',name=cell('n'),categoryRaw=cell('c');
     let category=categories[area].find(c=>c.toLowerCase()===categoryRaw.toLowerCase());
-    if(!name){preview.push({rowNum,name:'(blank)',category:categoryRaw,group:'',issue:'Missing product name — row skipped'});return}
-    if(!category){preview.push({rowNum,name,category:categoryRaw,group:'',issue:`Unknown category for ${sectionName(area)} — row skipped`});return}
-    let group=idx.group>=0?(row[idx.group]||'').trim():'';
-    let unit=(idx.u>=0?(row[idx.u]||'').trim():'')||'units';
-    let targetRaw=idx.t>=0?(row[idx.t]||'').trim():'',target=targetRaw===''?null:Number(targetRaw),issues=[];
-    if(targetRaw!==''&&(!Number.isFinite(target)||target<0)){issues.push('target ignored (not a number)');target=null}
-    let methodRaw=(idx.m>=0?(row[idx.m]||'').trim():'').toLowerCase(),method=validMethods[methodRaw]||'Whole count';
-    if(methodRaw&&!validMethods[methodRaw])issues.push('count method defaulted to Whole count');
-    let supplier=(idx.s>=0?(row[idx.s]||'').trim():'')||'Unassigned supplier';
-    let location=(idx.location>=0?(row[idx.location]||'').trim():'')||'Not set';
-    let packRaw=idx.p>=0?(row[idx.p]||'').trim():'',pack=packRaw===''?1:Number(packRaw);
-    if(!Number.isFinite(pack)||pack<1){issues.push('pack size defaulted to 1');pack=1}
-    let packName=(idx.pl>=0?(row[idx.pl]||'').trim():'')||'unit';
-    preview.push({rowNum,name,category,group,issue:issues.join('; ')||'OK'});
-    valid.push({n:name,c:category,group,u:unit,t:target,m:method,s:supplier,location,p:pack,pl:packName});
+    if(!name){parsedImportRows.push({rowNum,name:'(blank)',category:categoryRaw,problem:'Missing product name, so the row was skipped.'});return}
+    if(!category){parsedImportRows.push({rowNum,name,category:categoryRaw,problem:`Unknown category for ${sectionName(area)}, so the row was skipped.`});return}
+    let key=name.toLowerCase();
+    if(seen[key]){parsedImportRows.push({rowNum,name,category,problem:`This name is already on row ${seen[key]} of the file, so the row was skipped.`});return}
+    seen[key]=rowNum;
+    // Only cells that were filled in (and make sense) go into fields; anything left out keeps its current value.
+    let fields={c:category},issues=[];
+    let group=cell('group');if(group)fields.group=group;
+    let unit=cell('u');if(unit)fields.u=unit;
+    let targetRaw=cell('t');if(targetRaw){let t=Number(targetRaw);if(Number.isFinite(t)&&t>=0)fields.t=t;else issues.push('target ignored (not a number)')}
+    let methodRaw=cell('m').toLowerCase();if(methodRaw){if(validMethods[methodRaw])fields.m=validMethods[methodRaw];else issues.push('count method ignored (use Whole count, Weight or Visual)')}
+    let supplier=cell('s');if(supplier)fields.s=supplier;
+    let location=cell('location');if(location)fields.location=location;
+    let packRaw=cell('p');if(packRaw){let p=Number(packRaw);if(Number.isFinite(p)&&p>=1)fields.p=p;else issues.push('items per pack ignored (must be 1 or more)')}
+    let packName=cell('pl');if(packName)fields.pl=packName;
+    parsedImportRows.push({rowNum,name,category,fields,issues});
   });
-  pendingImportRows=valid;
-  $('#import-preview-wrap').hidden=false;
-  $('#import-preview-rows').innerHTML=preview.map(r=>`<tr><td>${r.rowNum}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(r.group)}</td><td>${escapeHtml(r.issue)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No data rows found</td></tr>';
-  $('#import-status').style.color='';
-  $('#import-status').textContent=`${valid.length} of ${preview.length} row${preview.length===1?'':'s'} ready to import.`;
-  $('#confirm-import').disabled=valid.length===0;
+  renderImportPreview();
 };
 $('#confirm-import').onclick=()=>{
   if(currentUser.role!=='manager'||!pendingImportRows.length)return;
-  let added=0,updated=0;
-  pendingImportRows.forEach(row=>{
-    let existing=data.find(x=>x.a===area&&x.n.trim().toLowerCase()===row.n.trim().toLowerCase());
-    if(existing){Object.assign(existing,{c:row.c,group:row.group,u:row.u,t:row.t,m:row.m,s:row.s,location:row.location,p:row.p,pl:row.pl});updated++}
-    else{data.push({id:crypto.randomUUID(),a:area,c:row.c,group:row.group,n:row.n,q:null,t:row.t,tDay:null,tEvening:null,tEvent:null,u:row.u,m:row.m,s:row.s,location:row.location,active:true,p:row.p,pl:row.pl,pv:0,pu:'g',photo:''});added++}
+  let updateExisting=$('#import-update-existing').checked,added=0,updated=0;
+  // Re-check each row against the latest stock list, in case it changed since the preview.
+  pendingImportRows.forEach(r=>{let plan=planImportRow(r,updateExisting);
+    if(plan.action==='update'){Object.assign(plan.existing,r.fields);updated++}
+    else if(plan.action==='add'){let f={...IMPORT_DEFAULTS,...r.fields};data.push({id:crypto.randomUUID(),a:area,c:f.c,group:f.group,n:r.name,q:null,t:f.t,tDay:null,tEvening:null,tEvent:null,u:f.u,m:f.m,s:f.s,location:f.location,active:true,p:f.p,pl:f.pl,pv:0,pu:'g',photo:''});added++}
   });
-  save();populateCategoryFilter();render();
+  if(added||updated){save();populateCategoryFilter();render()}
   $('#import-status').style.color='';
   $('#import-status').textContent=`Imported: ${added} added, ${updated} updated.`;
-  $('#confirm-import').disabled=true;pendingImportRows=[];
+  $('#confirm-import').disabled=true;pendingImportRows=[];parsedImportRows=[];
 };
 $('#close-edit').onclick=()=>$('#edit-dialog').close();$('#cancel-edit').onclick=()=>$('#edit-dialog').close();
 // Moving an item to another section: the form switches to that section's categories, subgroups and suppliers.

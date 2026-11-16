@@ -116,7 +116,7 @@ The shared frontend is a single HTML page. It has two views: the **Stock overvie
 | Start stocktake | "Start stocktake" | all | Physical count entry per area, with draft autosave and variance-reason enforcement |
 | Add stock item | "+ Add item" | manager | Create a new product with category, optional subgroup, unit, targets, supplier (from Admin → Suppliers, or typed), pack size, portion info and optional unit cost |
 | Edit stock item | row "Edit item" | manager | Edit an existing product's details (not its on-hand quantity), including its unit cost, status and moving it to another section |
-| Import items from CSV | "Import CSV" | manager | Download a template, choose a CSV, preview each row's issues, then import into the current section |
+| Import items from CSV | "Import CSV" | manager | Download a template, choose a CSV, preview what each row will do (Add / Update / Skip), then import into the current section. Existing products are only updated when "Also update products that already exist" is ticked, and blank cells keep current values |
 | Add / Edit supplier | Admin → Suppliers: "+ Add supplier" or row "Edit" | manager | Name, rep, phone, ordering email, account number, notes, areas, order days, order cut-off, delivery days, minimum order; "Archive supplier" / "Restore supplier" when editing |
 | Category / section | Admin → Categories: "+ Add section", or Rename / Archive under ⋯ | manager | Add a section (with its first category); rename a section, category or subgroup; archive one, choosing where its items move to |
 | Data backup | "Data backup" | manager | Download/import JSON backups; manager also gets "Download recovery point" (`/api/recovery`) |
