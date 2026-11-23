@@ -41,6 +41,7 @@ The shared frontend is a single HTML page. It has two views: the **Stock overvie
 │  ├─ "Reorder list" button ───────────► Reorder list dialog           [hidden for staff]
 │  └─ Item table, grouped by category and then subgroup (tap a heading to collapse it)
 │     ├─ Columns: Item, On hand, Target / par level, Count method, Status
+│     │  (720px or narrower: one card per item; secondary details behind a "Details" button)
 │     │  (Status: On target, Reorder <packs>, Not counted, PAR not set, Discontinued)
 │     └─ per-row actions (inline, not dialogs):
 │        ├─ Photo button → file picker (camera capture)                [all roles; add/replace only for non-managers]
