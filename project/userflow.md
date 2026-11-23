@@ -30,13 +30,11 @@ Roles referenced throughout: **staff** (count/record only), **supervisor** (staf
 
 ## 4. Start and submit a stocktake
 
-1. User clicks "Start stocktake"; dialog opens pre-filled with the current area and "Morning shift" type; counts start blank by design (the count box is not pre-filled from system stock).
-   - Each product is a card: photo, name, counting unit, a Details button, and a large − / count / + stepper with a small "On hand: X | Par: Y" line under it (Par follows the stocktake type's service PAR; unset shows "Not counted" / "–", never 0). − on a blank count leaves it blank; + starts at 1 (0.1 for measured items). No sideways scrolling: on phones under 370px the stepper drops to its own full-width row.
-   - Details opens location, order unit, supplier, unit cost (managers only) and the "Reason if different" box.
-   - Tapping the photo shows "Edit photo"; tapping again opens the camera/file picker (all roles; on mouse devices one click does it). Staff and supervisors can add or replace a photo but not remove one.
+1. User clicks "Start stocktake"; dialog opens pre-filled with the current area and "Morning shift" type; counts start blank by design (independent physical count, not pre-filled from system stock).
+   - On screens 720px wide or less the table becomes one block per product (name, count box and unit on one line, "Reason if different" underneath) so there is no sideways scrolling; the Submit bar stays pinned to the bottom.
 2. Switching stocktake type to "Special event" reveals a required event-name field.
 3. As the user types counts/notes, a debounced (300 ms) per-user-per-area draft is written to `localStorage`; switching area or closing/hiding the tab also force-saves the draft. Reopening the dialog for that area resumes the draft ("Resumed unsaved counts for this area").
-4. On submit, every product needs a numeric count. Any count whose variance from current stock exceeds a threshold (≥0.5 or 20% of target for measured items; ≥2 or 20% of target otherwise) must have a reason, or the card is flagged red, its Details opens, and submission is blocked with a focus jump to the missing note.
+4. On submit, every product needs a numeric count. Any count whose variance from current stock exceeds a threshold (≥0.5 or 20% of target for measured items; ≥2 or 20% of target otherwise) must have a reason, or the row is flagged red and submission is blocked with a focus jump to the missing note.
 5. On success: quantities are updated, a `stocktake` history entry is written per product, a locked stocktake session record is stored, the area's draft is cleared, and an alert confirms it is recorded and locked **on this device**, and that the green "Saved to shared records" message at the top of the page confirms it has saved.
 
 ## 5. Generate and export a reorder list
