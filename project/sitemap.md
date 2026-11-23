@@ -43,7 +43,7 @@ The shared frontend is a single HTML page. It has two views: the **Stock overvie
 │     ├─ Columns: Item, On hand, Target / par level, Count method, Status
 │     │  (Status: On target, Reorder <packs>, Not counted, PAR not set, Discontinued)
 │     └─ per-row actions (inline, not dialogs):
-│        ├─ Photo button → file picker (camera capture)                [manager only]
+│        ├─ Photo button → file picker (camera capture)                [all roles; add/replace only for non-managers]
 │        ├─ Remove photo                                               [manager only]
 │        ├─ Change supplier (prompt())                                 [manager only]
 │        ├─ Change order pack (prompt())                               [manager only]

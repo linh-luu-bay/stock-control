@@ -456,6 +456,22 @@ function summarizeQuantityChanges(previousData, finalData){
   return changes;
 }
 
+// The page resizes photos to 480px JPEGs (usually 30-60 KB), so anything bigger or of another
+// kind did not come from the app's uploader. Keeps the shared stock record small for every device.
+const MAX_PHOTO_LENGTH=200000;
+function acceptablePhoto(value){return typeof value==='string'&&value.length<=MAX_PHOTO_LENGTH&&/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(value)}
+
+// Photos are left out of the database change log, so photo changes are noted in the save's
+// audit entry instead: who changed which product's photo.
+function summarizePhotoChanges(previousData, finalData){
+  const previousMap=itemsById(previousData),changes=[];
+  for(const item of finalData){
+    const before=previousMap.get(item.id)?.photo||'',after=item.photo||'';
+    if(before!==after)changes.push({id:item.id,name:item.n,area:item.a,change:!after?'removed':before?'replaced':'added'});
+  }
+  return changes;
+}
+
 function secureState(incoming, previous, user){
   const suppliedData=Array.isArray(incoming.data)?incoming.data.map(normaliseItem):[];
   const sections=new Map(layoutOf(previous).areas.map(a=>[a.key,a]));
@@ -471,6 +487,9 @@ function secureState(incoming, previous, user){
       // explicit null check rather than relying on Number.isFinite alone.
       const secured={...old,q:candidate.q===null?null:(Number.isFinite(Number(candidate.q))?Number(candidate.q):old.q)};
       if(user.role!=='manager')secured.lastCost=old.lastCost;
+      // Staff and supervisors may add or replace a product photo (from the stocktake or stock
+      // list), but not remove one, and only with a resized JPEG like the app's own uploader makes.
+      if(acceptablePhoto(candidate.photo))secured.photo=candidate.photo;
       return secured;
     });
     for(const candidate of suppliedData){
@@ -541,7 +560,7 @@ async function handleApi(request,env,url,ctx){
       const snapshot={format:'bay-bellerive-stock-backup',version:1,exportedAt:stamp,revision,...previous};
       const newRevision=await saveAppStateAtomic(env,{expectedRevision:revision,value:state,stamp,actorEmail:user.email,actorName:user.name,actorRole:user.role,snapshot});
       if(newRevision==null)return json({error:'revision_conflict'},409);
-      await audit(env,user,'state_saved',{items:state.data.length,history:state.history.length,stocktakes:state.stocktakes.length,changes:summarizeQuantityChanges(previous.data||[],state.data)});
+      await audit(env,user,'state_saved',{items:state.data.length,history:state.history.length,stocktakes:state.stocktakes.length,changes:summarizeQuantityChanges(previous.data||[],state.data),photos:summarizePhotoChanges(previous.data||[],state.data)});
       return json({ok:true,revision:newRevision});
     }else{
       const inserted=await insertInitialAppState(env,state,user.email,stamp);

@@ -12,6 +12,19 @@ assert.equal(run(`JSON.stringify(visibleState(sample,{role:'supervisor'}))`).inc
 assert.equal(run(`visibleState(sample,{role:'manager'}).data[0].lastCost`),12);
 assert.equal(run(`eventKey({at:'server',clientAt:'client',type:'delivery'})===eventKey({at:'client',type:'delivery'})`),true);
 
+// Staff and supervisors may add or replace a product photo (a resized JPEG), but not remove
+// one, not use anything else as a photo, and still not change any other product detail.
+run(`globalThis.photoPrev={data:[{id:'p',a:'bar',n:'Lemons',q:4,t:6,photo:'data:image/jpeg;base64,OLD='},{id:'r',a:'bar',n:'Limes',q:2,t:6,photo:'data:image/jpeg;base64,KEEP='}],history:[],stocktakes:[]}`);
+run(`globalThis.photoSave=(role,changes)=>secureState({data:photoPrev.data.map(x=>({...x,...(changes[x.id]||{})})),history:[],stocktakes:[]},photoPrev,{role,name:'T',email:'t@example.com'})`);
+assert.equal(run(`photoSave('staff',{p:{photo:'data:image/jpeg;base64,NEW='}}).state.data[0].photo`),'data:image/jpeg;base64,NEW=');
+assert.equal(run(`photoSave('supervisor',{p:{photo:'data:image/jpeg;base64,NEW='}}).state.data[0].photo`),'data:image/jpeg;base64,NEW=');
+assert.equal(run(`photoSave('staff',{r:{photo:''}}).state.data[1].photo`),'data:image/jpeg;base64,KEEP=');
+assert.equal(run(`photoSave('staff',{p:{photo:'data:image/svg+xml;base64,PHN2Zz4='}}).state.data[0].photo`),'data:image/jpeg;base64,OLD=');
+assert.equal(run(`photoSave('staff',{p:{photo:'data:image/jpeg;base64,'+'A'.repeat(200001)}}).state.data[0].photo`),'data:image/jpeg;base64,OLD=');
+assert.equal(run(`JSON.stringify(photoSave('staff',{p:{n:'Renamed',t:99,photo:'data:image/jpeg;base64,NEW='}}).state.data[0])`),JSON.stringify({id:'p',a:'bar',n:'Lemons',q:4,t:6,photo:'data:image/jpeg;base64,NEW='}));
+assert.equal(run(`photoSave('manager',{r:{photo:''}}).state.data[1].photo`),'');
+assert.equal(run(`JSON.stringify(summarizePhotoChanges(photoPrev.data,[{...photoPrev.data[0],photo:'data:image/jpeg;base64,NEW='},{...photoPrev.data[1],photo:''}]).map(c=>c.change))`),'["replaced","removed"]');
+
 // ensureUser() now reaches Supabase over fetch() instead of a D1 binding. Stub fetch inside
 // the vm context to answer like PostgREST would, without any network access, and check the
 // "account not registered" rejection this stub is exercising.
@@ -27,5 +40,5 @@ assert.equal(denied.status,401);
 
 const script=fs.readFileSync(new URL('../dist/index.html',import.meta.url),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 new vm.Script(script);
-console.log('PASS: cost redaction, retained manager costs, stable event deduplication, unlisted-account rejection (via stubbed Supabase fetch), anonymous API rejection, client syntax.');
+console.log('PASS: cost redaction, retained manager costs, stable event deduplication, staff photo upload limits, unlisted-account rejection (via stubbed Supabase fetch), anonymous API rejection, client syntax.');
 console.log('NOTE: the full role/atomicity/conflict integration coverage this file used to run against an in-memory D1-shaped SQLite database no longer applies now that storage is Supabase/Postgres over HTTP (see worker/server-template.js and supabase/schema.sql). That coverage needs either a fake-PostgREST mock or an opt-in run against a real Supabase project -- neither is implemented yet, so treat handleApi()\'s Supabase-backed paths as manually verified only (see tools/dev-server.mjs) until that is added.');
