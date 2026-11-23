@@ -16,6 +16,7 @@ Roles referenced throughout: **staff** (count/record only), **supervisor** (staf
 
 1. User picks an area tab (the sections managers set up in Admin → Categories) — client-side only, no reload.
 2. User optionally narrows the list with the category filter or search, and switches the target selector (Default/Day/Evening/Event) to see the relevant PAR column. Category and subgroup headings can be tapped to collapse them.
+   - On screens 720px wide or less each product is a card (no sideways scrolling): photo, name, unit and a Details button on the left; the on-hand box with "Par: …" under it on the right; the status underneath. Details opens location, supplier, order unit, count method and (managers) the edit buttons, and stays open while the list redraws.
 3. A supervisor or manager types a new on-hand number directly into a row's quantity box. The box is disabled for staff, who use Record movement or Start stocktake instead. Clearing the box means "Not counted", never zero.
 4. The **Confirm count** dialog asks "Change the count for Gin (Bar) from 4 bottles to 6 bottles?" (or "Mark … as Not counted?") with an optional reason. Cancelling puts the old number back. If someone else changed that item while the dialog was open, the app asks the user to type the count again.
 5. On **Save count**, a `count_adjustment` history entry is written (with the reason), the row and stats re-render, and a debounced save (500 ms) pushes to `/api/state`. The count also appears in Admin → Change log.
